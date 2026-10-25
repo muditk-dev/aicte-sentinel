@@ -121,17 +121,17 @@ The seed command initializes deterministic test accounts across every statutory 
 ## 6. Automated Testing & Build Validation
 
 ### 6.1 Backend Test Suite (Pytest)
-Executes 26 comprehensive unit and integration tests against an isolated in-memory SQLite database, verifying auth tokens, tenant RLS isolation, guarded state machine transitions, magic-byte file signature validation, ClamAV antivirus integration, quarantined download denial, scrutiny findings RBAC, deficiency notice lifecycle, deadline enforcement, expert conflict-of-interest detection & blocking, documented reviewer overrides, scheduling conflict prevention, EVC report versioning & SHA-256 payload digests, committee quorum rules, and statutory decision immutability with non-repudiation attestation:
+Executes 33 comprehensive unit and integration tests against an isolated in-memory SQLite database, verifying auth tokens, tenant RLS isolation, guarded state machine transitions, magic-byte file signature validation, ClamAV antivirus integration, quarantined download denial, scrutiny findings RBAC, deficiency notice lifecycle, deadline enforcement, expert conflict-of-interest detection & blocking, documented reviewer overrides, scheduling conflict prevention, EVC report versioning & SHA-256 payload digests, committee quorum rules, statutory decision immutability with non-repudiation attestation, explainable delay-risk feature extraction & SHAP attribution, clean vault quarantine enforcement on OCR, OCR field verification/correction audit logging, and grounded APH clause citations with uncertainty safeguards:
 ```powershell
 .\.venv\Scripts\pytest -v backend/tests
 ```
-**Outcome:** `26 passed (100% pass rate)`
+**Outcome:** `33 passed (100% pass rate in ~26s)`
 
 ### 6.2 Frontend Production Build (TypeScript + Vite)
 ```powershell
 npm --prefix frontend run build
 ```
-**Outcome:** `Built in ~11s (0 TypeScript errors, production assets emitted in frontend/dist/)`
+**Outcome:** `Built in ~5.5s (0 TypeScript errors, production assets emitted in frontend/dist/)`
 
 ---
 
@@ -143,6 +143,22 @@ npm --prefix frontend run build
   - `POST /api/v1/applications/{app_id}/documents` — Upload with magic-byte verification and antivirus quarantine scanning.
   - `GET /api/v1/applications/{app_id}/documents` — List uploaded application documents.
   - `GET /api/v1/documents/{doc_id}/download` — Authorized streaming download of clean vault documents (denies quarantined/rejected).
+- **Document OCR & Compliance Field Extraction (M12):**
+  - `POST /api/v1/ocr/process/{doc_id}` — Trigger OCR extraction (clean vault accepted documents only).
+  - `GET /api/v1/ocr/document/{doc_id}` — Get OCR job and extracted fields for document.
+  - `GET /api/v1/ocr/application/{app_id}` — List all extracted fields across application documents.
+  - `PUT /api/v1/ocr/fields/{field_id}/verify` — Scrutiny officer verification, correction, or rejection with chained audit event.
+- **Explainable Delay-Risk Intelligence (M11):**
+  - `GET /api/v1/intelligence/risk/{app_id}` — Explainable delay-risk prediction with SHAP factor attributions.
+  - `POST /api/v1/intelligence/risk/{app_id}/recompute` — Recompute prediction with fresh state.
+  - `GET /api/v1/intelligence/overview` — Pipeline bottleneck heatmap & critical risk application rankings.
+  - `GET /api/v1/intelligence/models` — Registered model versions with algorithm, features, metrics, and training dataset descriptions.
+- **APH-Grounded Regulatory Assistant (M13):**
+  - `POST /api/v1/aph/ask` — Grounded regulatory query against APH 2026-27 with exact chapter/clause citations and uncertainty disclaimer.
+  - `GET /api/v1/aph/sources` — Authoritative indexed APH handbook editions.
+  - `GET /api/v1/aph/clauses` — List and filter indexed handbook clauses.
+  - `GET /api/v1/aph/history` — User query audit history.
+  - `POST /api/v1/aph/feedback/{query_id}` — Thumbs up / down feedback logging.
 - **Scrutiny Desk:**
   - `GET /api/v1/applications/{app_id}/scrutiny` — List regulatory scrutiny findings.
   - `POST /api/v1/applications/{app_id}/scrutiny` — Record scrutiny findings (Officer role required).

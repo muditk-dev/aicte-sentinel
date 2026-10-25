@@ -13,6 +13,8 @@ import { DiagnosticsPage } from '../pages/DiagnosticsPage'
 import { EVCPage } from '../pages/EVCPage'
 import { CommitteesPage } from '../pages/CommitteesPage'
 import { DecisionsPage } from '../pages/DecisionsPage'
+import { RiskIntelligencePage } from '../pages/RiskIntelligencePage'
+import { APHAssistantPage } from '../pages/APHAssistantPage'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -49,6 +51,14 @@ export const router = createBrowserRouter([
       {
         path: 'applications/:id',
         element: <ApplicationDetailPage />,
+      },
+      {
+        path: 'intelligence',
+        element: <RiskIntelligencePage />,
+      },
+      {
+        path: 'aph-assistant',
+        element: <APHAssistantPage />,
       },
       {
         path: 'evc',

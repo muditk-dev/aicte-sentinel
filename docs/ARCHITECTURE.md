@@ -150,3 +150,40 @@ Every transition requires:
   - `storage`: MinIO S3-compatible object store.
   - `clamav`: ClamAV daemon for file scanning.
 - **Environment Management:** Driven strictly by `.env` adhering to 12-factor application methodology.
+
+---
+
+## 6. Compliance Intelligence, OCR & Grounded APH Assistant (Phase 4)
+
+```
+                            ┌────────────────────────────────────────────────────────┐
+                            │               AICTE COMPLIANCE INTELLIGENCE            │
+                            └───────────────────────────┬────────────────────────────┘
+                                                        │
+                      ┌─────────────────────────────────┼────────────────────────────────┐
+                      ▼                                 ▼                                ▼
+       ┌─────────────────────────────┐   ┌─────────────────────────────┐  ┌─────────────────────────────┐
+       │   M11: DELAY-RISK PREDICTION│   │     M12: DOCUMENT OCR       │  │   M13: GROUNDED APH RAG     │
+       │ - Leakage-Free Features     │   │ - Clean Vault Prerequisite  │  │ - Official APH 2026-27      │
+       │ - Pre-Outcome Observations  │   │ - PDF & Token Stream Parser │  │ - BM25 & Semantic Hybrid    │
+       │ - SHAP Attribution Weights  │   │ - Bounding Box & Confidence │  │ - Chapter/Clause Citations  │
+       │ - Calibrated Risk Scores    │   │ - Scrutiny Officer Verify   │  │ - Uncertainty Fallback      │
+       │ - Model Versioning Metadata │   │ - Merkle Audit Chained      │  │ - Non-Binding Advisory Label│
+       └─────────────────────────────┘   └─────────────────────────────┘  └─────────────────────────────┘
+```
+
+### 6.1 M11: Explainable Delay-Risk Prediction
+1. **Leakage-Free Feature Engineering:** Only uses historical observations available at prediction time (stage dwell time, unresolved deficiencies count, document defect rates, EVC inspection status, and regional backlog density).
+2. **Explainable SHAP-Style Attributions:** Each prediction generates decomposed feature impacts (`INCREASES_RISK` / `REDUCES_RISK`) with relative weights and human-readable descriptions for regional coordinators.
+3. **Model Versioning:** Tracked in `model_versions` table with metrics (ROC-AUC, Precision, Recall, MAE) and synthetic baseline calibration metadata.
+4. **Statutory Guardrail:** Flagged `is_automated_advisory: True`. Predictive outputs cannot trigger transitions or statutory outcomes.
+
+### 6.2 M12: Secure Document OCR & Structured Extraction
+1. **Clean Vault Quarantine Prerequisite:** Any document whose `scan_status != 'ACCEPTED'` is strictly rejected with `DOCUMENT_NOT_CLEAN` status 400.
+2. **Structured Field Extractors:** Parses Fire NOC validity dates, Land Deed registration numbers and acreages, and Building Plan plinth areas with confidence scoring and page coordinate bounding boxes.
+3. **Scrutiny Officer Review Lifecycle:** AI-extracted fields are stored as `PENDING` until an authorized Scrutiny Officer performs `VERIFIED`, `CORRECTED` (with justification), or `REJECTED`, recording an immutable chained audit event.
+
+### 6.3 M13: APH-Grounded Retrieval-Augmented Generation (RAG)
+1. **Authoritative Corpus:** Indexed AICTE Approval Process Handbook (APH 2026-27) divided into chapters, clauses, and norm categories.
+2. **Hybrid Lexical & Semantic Retrieval:** Combines BM25 scoring with vector similarity, ensuring zero external vendor lock-in.
+3. **Mandatory Citations & Uncertainty Safeguard:** Every answer includes exact chapter, clause, page, and excerpt citations. If query exceeds indexed corpus coverage, the assistant emits an explicit uncertainty warning rather than hallucinating regulatory rules.

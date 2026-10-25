@@ -444,3 +444,155 @@ export interface StatutoryDecision {
   conditions: DecisionCondition[];
   created_at: string;
 }
+
+// --- Phase 4: Compliance Intelligence & Delay Prediction ---
+
+export interface FactorAttribution {
+  factor: string;
+  display_name: string;
+  impact: 'INCREASES_RISK' | 'REDUCES_RISK';
+  weight: number;
+  observed_value: string;
+  description: string;
+}
+
+export interface DelayRiskPrediction {
+  id: string;
+  application_id: string;
+  model_version_id?: string;
+  risk_score: number;
+  risk_category: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  estimated_delay_days: number;
+  confidence_score: number;
+  factor_attributions: FactorAttribution[];
+  is_automated_advisory: boolean;
+  advisory_notes: string;
+  created_at: string;
+}
+
+export interface ModelVersion {
+  id: string;
+  name: string;
+  version_tag: string;
+  algorithm: string;
+  features: string[];
+  metrics: Record<string, number>;
+  training_dataset_summary: string;
+  is_active: boolean;
+  description?: string;
+  created_at: string;
+}
+
+export interface RiskOverviewItem {
+  application_id: string;
+  application_number: string;
+  institution_name: string;
+  region: string;
+  current_status: string;
+  risk_score: number;
+  risk_category: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  estimated_delay_days: number;
+  top_factor?: string;
+}
+
+// --- Phase 4: Document OCR & Field Extraction ---
+
+export interface OCRExtractedField {
+  id: string;
+  ocr_job_id: string;
+  document_id: string;
+  application_id: string;
+  field_name: string;
+  field_category: string;
+  raw_value: string;
+  normalized_value?: string;
+  confidence: number;
+  page_number: number;
+  bounding_box?: {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+  };
+  verification_status: 'PENDING' | 'VERIFIED' | 'CORRECTED' | 'REJECTED';
+  is_automated_advisory: boolean;
+  corrected_value?: string;
+  review_comments?: string;
+  reviewed_by_user_id?: string;
+  reviewed_at?: string;
+  created_at: string;
+}
+
+export interface OCRJob {
+  id: string;
+  document_id: string;
+  application_id: string;
+  status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  engine: string;
+  page_count: number;
+  extracted_text_preview?: string;
+  processing_time_ms: number;
+  error_message?: string;
+  fields: OCRExtractedField[];
+  created_at: string;
+}
+
+export interface OCRFieldVerifyRequest {
+  verification_status: 'VERIFIED' | 'CORRECTED' | 'REJECTED';
+  corrected_value?: string;
+  review_comments?: string;
+}
+
+// --- Phase 4: APH Assistant & RAG ---
+
+export interface APHCitation {
+  clause_number: string;
+  clause_title: string;
+  chapter_number: number;
+  chapter_title: string;
+  page_number: number;
+  norm_category: string;
+  relevance_score: number;
+  quote_excerpt: string;
+}
+
+export interface APHClause {
+  id: string;
+  source_id: string;
+  chapter_number: number;
+  chapter_title: string;
+  clause_number: string;
+  clause_title: string;
+  page_number: number;
+  content_text: string;
+  norm_category: string;
+}
+
+export interface APHSourceDocument {
+  id: string;
+  title: string;
+  edition: string;
+  official_reference_url?: string;
+  sha256_hash: string;
+  total_chapters: number;
+  total_clauses: number;
+  created_at: string;
+}
+
+export interface APHQueryRequest {
+  query_text: string;
+}
+
+export interface APHQueryResponse {
+  id: string;
+  user_id: string;
+  institution_id?: string;
+  query_text: string;
+  response_text: string;
+  citations: APHCitation[];
+  retrieval_mode: string;
+  is_automated_advisory: boolean;
+  uncertainty_warning?: string;
+  feedback_rating?: number;
+  created_at: string;
+}

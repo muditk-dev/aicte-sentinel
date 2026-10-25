@@ -10,6 +10,9 @@ from app.models.deficiency import DeficiencyNotice, DeficiencyItem, DeficiencyRe
 from app.models.evc import Expert, EVCInspection, EVCInspectionExpert, EVCReportVersion
 from app.models.committee import Committee, CommitteeMembership, Hearing, HearingDocket, HearingAttendance
 from app.models.decision import StatutoryDecision, DecisionCondition
+from app.models.intelligence import ModelVersion, DelayRiskPrediction
+from app.models.ocr import OCRJob, OCRExtractedField
+from app.models.aph import APHSourceDocument, APHClause, APHAssistantQuery
 
 __all__ = [
     "Base",
@@ -45,4 +48,11 @@ __all__ = [
     "HearingAttendance",
     "StatutoryDecision",
     "DecisionCondition",
+    "ModelVersion",
+    "DelayRiskPrediction",
+    "OCRJob",
+    "OCRExtractedField",
+    "APHSourceDocument",
+    "APHClause",
+    "APHAssistantQuery",
 ]

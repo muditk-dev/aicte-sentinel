@@ -7,11 +7,12 @@ import { scrutinyService } from '../services/scrutinyService'
 import { deficiencyService } from '../services/deficiencyService'
 import { evcService } from '../services/evcService'
 import { decisionService } from '../services/decisionService'
+import { ocrService } from '../services/ocrService'
 import { authService } from '../services/authService'
 import { StatusBadge } from '../components/StatusBadge'
 import { Modal } from '../components/Modal'
 import { formatDate } from '../lib/utils'
-import { Document } from '../types'
+import { Document, OCRExtractedField } from '../types'
 import {
   ArrowLeft,
   AlertTriangle,
@@ -29,6 +30,10 @@ import {
   Info,
   Users,
   Award,
+  Sparkles,
+  CheckCircle2,
+  Edit3,
+  RefreshCw,
 } from 'lucide-react'
 
 export const ApplicationDetailPage: React.FC = () => {
@@ -110,6 +115,64 @@ export const ApplicationDetailPage: React.FC = () => {
     queryFn: () => decisionService.getDecisionByApplication(id),
     enabled: !!id,
   })
+
+  // OCR Extracted Fields Query (M12)
+  const { data: ocrFields = [], refetch: refetchOCR, isLoading: ocrLoading } = useQuery({
+    queryKey: ['ocr-fields', id],
+    queryFn: () => ocrService.listApplicationOCRFields(id),
+    enabled: !!id,
+  })
+
+  // OCR Correction & Verification State
+  const [ocrProcessingDocId, setOcrProcessingDocId] = useState<string | null>(null)
+  const [correctingField, setCorrectingField] = useState<OCRExtractedField | null>(null)
+  const [correctedValue, setCorrectedValue] = useState('')
+  const [correctReason, setCorrectReason] = useState('')
+  const [ocrActionLoading, setOcrActionLoading] = useState(false)
+
+  const handleTriggerOCR = async (docId: string) => {
+    setOcrProcessingDocId(docId)
+    try {
+      await ocrService.processDocumentOCR(docId)
+      refetchOCR()
+    } catch (err: any) {
+      alert(`OCR Extraction Failed: ${err.message}`)
+    } finally {
+      setOcrProcessingDocId(null)
+    }
+  }
+
+  const handleVerifyField = async (fieldId: string, status: 'VERIFIED' | 'REJECTED') => {
+    setOcrActionLoading(true)
+    try {
+      await ocrService.verifyField(fieldId, { verification_status: status })
+      refetchOCR()
+    } catch (err: any) {
+      alert(`Verification action failed: ${err.message}`)
+    } finally {
+      setOcrActionLoading(false)
+    }
+  }
+
+  const handleCommitCorrection = async () => {
+    if (!correctingField || !correctedValue.trim()) return
+    setOcrActionLoading(true)
+    try {
+      await ocrService.verifyField(correctingField.id, {
+        verification_status: 'CORRECTED',
+        corrected_value: correctedValue.trim(),
+        review_comments: correctReason.trim() || undefined,
+      })
+      setCorrectingField(null)
+      setCorrectedValue('')
+      setCorrectReason('')
+      refetchOCR()
+    } catch (err: any) {
+      alert(`Correction failed: ${err.message}`)
+    } finally {
+      setOcrActionLoading(false)
+    }
+  }
 
   // Mutations
   const transitionMutation = useMutation({
@@ -798,9 +861,234 @@ export const ApplicationDetailPage: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* OCR Document Intelligence & Structured Extraction Desk (M12) */}
+              <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-indigo-600" />
+                      Document OCR & Extracted Compliance Fields
+                    </h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Automated text extraction from verified clean documents. Scrutiny officers verify or correct findings.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => refetchOCR()}
+                    disabled={ocrLoading}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 border border-slate-300 rounded hover:bg-slate-50 transition"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${ocrLoading ? 'animate-spin' : ''}`} />
+                    Refresh Fields
+                  </button>
+                </div>
+
+                {/* Statutory Guardrail Note */}
+                <div className="p-2.5 bg-indigo-50/60 border border-indigo-200/60 rounded text-[11px] text-indigo-900 flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Statutory Rule:</strong> OCR extracted fields remain labeled <em>Advisory Intelligence</em> until an authorized Scrutiny Officer explicitly verifies or corrects them.
+                  </span>
+                </div>
+
+                {/* Quick OCR Trigger for Accepted Documents */}
+                {isOfficer && documents.filter((d) => d.scan_status === 'ACCEPTED').length > 0 && (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                    <div className="text-[11px] font-semibold text-slate-700">
+                      Process Clean Vault Documents with OCR Extractor:
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {documents
+                        .filter((d) => d.scan_status === 'ACCEPTED')
+                        .map((doc) => (
+                          <button
+                            key={doc.id}
+                            onClick={() => handleTriggerOCR(doc.id)}
+                            disabled={ocrProcessingDocId === doc.id}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-xs text-slate-700 font-medium transition disabled:opacity-50"
+                          >
+                            <Sparkles className="w-3 h-3 text-indigo-500" />
+                            {ocrProcessingDocId === doc.id ? 'Running OCR...' : `Extract: ${doc.original_filename}`}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Extracted Fields Table */}
+                {ocrLoading ? (
+                  <p className="text-xs text-slate-500 py-4 text-center">Loading extracted fields...</p>
+                ) : ocrFields.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-slate-500 space-y-2">
+                    <FileText className="w-8 h-8 text-slate-300 mx-auto" />
+                    <p>No compliance fields extracted yet.</p>
+                    <p className="text-[11px] text-slate-400">
+                      Upload accepted documents and trigger OCR above to extract Fire NOC numbers, land boundaries, and built-up dimensions.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-500">
+                          <th className="py-2 px-2 font-semibold">Field Name</th>
+                          <th className="py-2 px-2 font-semibold">Category</th>
+                          <th className="py-2 px-2 font-semibold">Extracted Value</th>
+                          <th className="py-2 px-2 font-semibold">Confidence</th>
+                          <th className="py-2 px-2 font-semibold">Status</th>
+                          {isOfficer && <th className="py-2 px-2 font-semibold text-right">Verification</th>}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {ocrFields.map((field) => (
+                          <tr key={field.id} className="hover:bg-slate-50/60 transition">
+                            <td className="py-2.5 px-2 font-medium text-slate-900">
+                              {field.field_name.replace(/_/g, ' ')}
+                            </td>
+                            <td className="py-2.5 px-2">
+                              <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[10px]">
+                                {field.field_category}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-2">
+                              {field.verification_status === 'CORRECTED' ? (
+                                <div>
+                                  <span className="line-through text-slate-400 mr-1.5">{field.raw_value}</span>
+                                  <span className="font-semibold text-blue-700">{field.corrected_value}</span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-800 font-medium">{field.raw_value}</span>
+                              )}
+                              {field.review_comments && (
+                                <div className="text-[10px] text-slate-500 italic mt-0.5">
+                                  Officer note: {field.review_comments}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-2 text-slate-600 font-mono text-[11px]">
+                              {(field.confidence * 100).toFixed(0)}%
+                            </td>
+                            <td className="py-2.5 px-2">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  field.verification_status === 'VERIFIED'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : field.verification_status === 'CORRECTED'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : field.verification_status === 'REJECTED'
+                                    ? 'bg-rose-100 text-rose-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}
+                              >
+                                {field.verification_status}
+                              </span>
+                            </td>
+                            {isOfficer && (
+                              <td className="py-2.5 px-2 text-right">
+                                <div className="inline-flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleVerifyField(field.id, 'VERIFIED')}
+                                    disabled={ocrActionLoading || field.verification_status === 'VERIFIED'}
+                                    title="Verify & Accept Field"
+                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded transition disabled:opacity-40"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setCorrectingField(field)
+                                      setCorrectedValue(field.corrected_value || field.raw_value)
+                                      setCorrectReason(field.review_comments || '')
+                                    }}
+                                    disabled={ocrActionLoading}
+                                    title="Correct Extracted Value"
+                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded transition disabled:opacity-40"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleVerifyField(field.id, 'REJECTED')}
+                                    disabled={ocrActionLoading || field.verification_status === 'REJECTED'}
+                                    title="Reject Field"
+                                    className="p-1 text-rose-600 hover:bg-rose-50 rounded transition disabled:opacity-40"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Field Correction Modal */}
+      {correctingField && (
+        <Modal
+          isOpen={true}
+          onClose={() => setCorrectingField(null)}
+          title={`Correct Extracted Field: ${correctingField.field_name}`}
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded">
+              <span className="text-slate-500 block text-[11px]">Raw AI Extracted Value:</span>
+              <span className="font-semibold text-slate-800">{correctingField.raw_value}</span>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">
+                Verified Correct Value: <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={correctedValue}
+                onChange={(e) => setCorrectedValue(e.target.value)}
+                placeholder="Enter corrected value as read from official document..."
+                className="w-full border border-slate-300 rounded p-2 text-xs focus:outline-none focus:border-blue-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">
+                Scrutiny Officer Reason / Citation:
+              </label>
+              <textarea
+                value={correctReason}
+                onChange={(e) => setCorrectReason(e.target.value)}
+                rows={3}
+                placeholder="Rationale for overriding raw OCR extraction (e.g. verified with issuing authority registry)..."
+                className="w-full border border-slate-300 rounded p-2 text-xs focus:outline-none focus:border-blue-600"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setCorrectingField(null)}
+                className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCommitCorrection}
+                disabled={ocrActionLoading || !correctedValue.trim()}
+                className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded text-xs font-semibold disabled:opacity-50"
+              >
+                {ocrActionLoading ? 'Saving...' : 'Commit Verified Correction'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* TAB 4: DEFICIENCY NOTICES & CLARIFICATION */}

@@ -38,11 +38,169 @@ from app.models import (
     HearingAttendance,
     StatutoryDecision,
     DecisionCondition,
+    ModelVersion,
+    DelayRiskPrediction,
+    OCRJob,
+    OCRExtractedField,
+    APHSourceDocument,
+    APHClause,
+    APHAssistantQuery,
 )
 from app.workflows.engine import DEFAULT_STATE_MACHINE
 from app.security.password import hash_password
 from app.audit.service import record_audit_event
 from app.storage.service import storage_service
+from app.intelligence.aph_service import DEFAULT_SEED_CLAUSES
+
+
+async def seed_phase4_data(db):
+    print("Seeding APH 2026-27 handbook knowledge base & clauses (M13)...")
+    aph_source_stmt = select(APHSourceDocument).where(APHSourceDocument.edition == "2026-27")
+    aph_source = (await db.execute(aph_source_stmt)).scalar_one_or_none()
+    if not aph_source:
+        source_content = json.dumps(DEFAULT_SEED_CLAUSES)
+        sha256 = hashlib.sha256(source_content.encode("utf-8")).hexdigest()
+        aph_source = APHSourceDocument(
+            title="AICTE Approval Process Handbook (APH) 2026-2027",
+            edition="2026-27",
+            official_reference_url="https://www.aicte-india.org/sites/default/files/approval/APH_2026-27.pdf",
+            sha256_hash=sha256,
+            total_chapters=7,
+            total_clauses=len(DEFAULT_SEED_CLAUSES),
+        )
+        db.add(aph_source)
+        await db.flush()
+
+        for item in DEFAULT_SEED_CLAUSES:
+            clause = APHClause(
+                source_id=aph_source.id,
+                chapter_number=item["chapter_number"],
+                chapter_title=item["chapter_title"],
+                clause_number=item["clause_number"],
+                clause_title=item["clause_title"],
+                page_number=item["page_number"],
+                content_text=item["content_text"],
+                norm_category=item["norm_category"],
+            )
+            db.add(clause)
+        await db.flush()
+
+    print("Seeding Delay-Risk Prediction Machine Learning Model & Precomputed Scores (M11)...")
+    model_stmt = select(ModelVersion).where(ModelVersion.version_tag == "v1.2.0-sentinel-supervised")
+    model_ver = (await db.execute(model_stmt)).scalar_one_or_none()
+    if not model_ver:
+        model_ver = ModelVersion(
+            name="delay_risk_gradient_ensemble",
+            version_tag="v1.2.0-sentinel-supervised",
+            algorithm="GradientEnsembleWithSHAPAttribution",
+            features_json=json.dumps([
+                "days_in_current_status",
+                "days_since_submission",
+                "total_documents",
+                "deficient_documents_count",
+                "deficiency_notices_count",
+                "unresolved_deficiencies_count",
+                "has_evc_inspection",
+                "regional_backlog_density",
+            ]),
+            metrics_json=json.dumps({
+                "roc_auc": 0.892,
+                "precision": 0.865,
+                "recall": 0.841,
+                "f1_score": 0.853,
+                "mae_delay_days": 2.7,
+            }),
+            training_dataset_summary="Calibrated risk scoring engine trained on historical approval processing cycles and deficiency curing dynamics (SIH 2026 reference baseline).",
+            is_active=True,
+            description="Production risk model with explainable SHAP-style attribution for SIH 2026 PS 26262.",
+        )
+        db.add(model_ver)
+        await db.flush()
+
+    # Seed Predictions for existing applications
+    apps_stmt = select(Application)
+    all_apps = (await db.execute(apps_stmt)).scalars().all()
+    for a in all_apps:
+        pred_check = (await db.execute(select(DelayRiskPrediction).where(DelayRiskPrediction.application_id == a.id))).scalar_one_or_none()
+        if not pred_check:
+            score = 0.68 if a.current_status in ("DEFICIENCY_ISSUED", "HEARING_SCHEDULED", "SUBMITTED") else 0.18
+            cat = "HIGH" if score > 0.50 else "LOW"
+            delay = 11.5 if cat == "HIGH" else 2.5
+            factors = [
+                {
+                    "factor": "unresolved_deficiencies" if cat == "HIGH" else "stage_dwell_time",
+                    "display_name": "Unresolved Deficiencies" if cat == "HIGH" else "Stage Progression",
+                    "impact": "INCREASES_RISK" if cat == "HIGH" else "REDUCES_RISK",
+                    "weight": 0.32 if cat == "HIGH" else -0.05,
+                    "observed_value": "2 items pending" if cat == "HIGH" else "Within SLA benchmark",
+                    "description": "Deficiency response is pending institutional upload" if cat == "HIGH" else "Application processing speed is on track",
+                }
+            ]
+            pred = DelayRiskPrediction(
+                application_id=a.id,
+                model_version_id=model_ver.id,
+                risk_score=score,
+                risk_category=cat,
+                estimated_delay_days=delay,
+                confidence_score=0.88,
+                factor_attributions_json=json.dumps(factors),
+                is_automated_advisory=True,
+                advisory_notes=f"Statutory Notice: Delay risk assessed at {cat} ({score*100:.1f}%). Advisory decision support for regional officers.",
+            )
+            db.add(pred)
+            a.delay_risk_score = score
+            a.delay_risk_factors_json = json.dumps(factors)
+
+    print("Seeding OCR document extraction jobs and compliance fields (M12)...")
+    docs_stmt = select(Document).where(Document.scan_status == "ACCEPTED")
+    accepted_docs = (await db.execute(docs_stmt)).scalars().all()
+    for doc in accepted_docs:
+        job_check = (await db.execute(select(OCRJob).where(OCRJob.document_id == doc.id))).scalar_one_or_none()
+        if not job_check:
+            ocr_job = OCRJob(
+                document_id=doc.id,
+                application_id=doc.application_id,
+                status="COMPLETED",
+                engine="pypdf_native_regex_extractor",
+                page_count=3,
+                extracted_text_preview="Extracted text from official verified document.",
+                processing_time_ms=420,
+            )
+            db.add(ocr_job)
+            await db.flush()
+
+            f1 = OCRExtractedField(
+                ocr_job_id=ocr_job.id,
+                document_id=doc.id,
+                application_id=doc.application_id,
+                field_name="fire_noc_number",
+                field_category="FIRE_NOC",
+                raw_value="DFS/HQ/2026/NOC-9842",
+                normalized_value="DFS/HQ/2026/NOC-9842",
+                confidence=0.96,
+                page_number=1,
+                bounding_box_json=json.dumps({"x": 140, "y": 180, "width": 240, "height": 28}),
+                verification_status="VERIFIED",
+                is_automated_advisory=False,
+                review_comments="Verified against State Fire & Rescue Services database",
+            )
+            f2 = OCRExtractedField(
+                ocr_job_id=ocr_job.id,
+                document_id=doc.id,
+                application_id=doc.application_id,
+                field_name="expiry_date",
+                field_category="FIRE_NOC",
+                raw_value="2027-01-14",
+                normalized_value="2027-01-14",
+                confidence=0.94,
+                page_number=1,
+                bounding_box_json=json.dumps({"x": 340, "y": 260, "width": 180, "height": 24}),
+                verification_status="PENDING",
+                is_automated_advisory=True,
+            )
+            db.add_all([f1, f2])
+
+    await db.commit()
 
 
 async def seed():
@@ -53,12 +211,19 @@ async def seed():
         stmt = select(User).where(User.email == settings.SEED_SUPERADMIN_EMAIL)
         existing_admin = (await db.execute(stmt)).scalar_one_or_none()
         
-        # If admin exists, check if experts & decisions exist. If so, skip.
+        # If admin exists, check if experts exist
         if existing_admin:
             exp_check = (await db.execute(select(Expert).limit(1))).scalar_one_or_none()
             if exp_check:
-                print("Database already contains seed data, experts, and statutory decisions. Skipping seed.")
-                return
+                aph_check = (await db.execute(select(APHSourceDocument).limit(1))).scalar_one_or_none()
+                if aph_check:
+                    print("Database already contains seed data, experts, statutory decisions, and intelligence records. Skipping seed.")
+                    return
+                else:
+                    print("Previous milestones present. Augmenting database with Phase 4 Intelligence, OCR & APH...")
+                    await seed_phase4_data(db)
+                    print("Phase 4 intelligence augmentations seeded successfully!")
+                    return
 
         print("Seeding statutory permissions and roles...")
         permissions_data = [
@@ -669,6 +834,152 @@ async def seed():
             resource_id=dec1.id,
             details={"decision_number": dec1.decision_number, "sha256": dec_attest},
         )
+
+        print("Seeding APH 2026-27 handbook knowledge base & clauses (M13)...")
+        aph_source_stmt = select(APHSourceDocument).where(APHSourceDocument.edition == "2026-27")
+        aph_source = (await db.execute(aph_source_stmt)).scalar_one_or_none()
+        if not aph_source:
+            source_content = json.dumps(DEFAULT_SEED_CLAUSES)
+            sha256 = hashlib.sha256(source_content.encode("utf-8")).hexdigest()
+            aph_source = APHSourceDocument(
+                title="AICTE Approval Process Handbook (APH) 2026-2027",
+                edition="2026-27",
+                official_reference_url="https://www.aicte-india.org/sites/default/files/approval/APH_2026-27.pdf",
+                sha256_hash=sha256,
+                total_chapters=7,
+                total_clauses=len(DEFAULT_SEED_CLAUSES),
+            )
+            db.add(aph_source)
+            await db.flush()
+
+            for item in DEFAULT_SEED_CLAUSES:
+                clause = APHClause(
+                    source_id=aph_source.id,
+                    chapter_number=item["chapter_number"],
+                    chapter_title=item["chapter_title"],
+                    clause_number=item["clause_number"],
+                    clause_title=item["clause_title"],
+                    page_number=item["page_number"],
+                    content_text=item["content_text"],
+                    norm_category=item["norm_category"],
+                )
+                db.add(clause)
+            await db.flush()
+
+        print("Seeding Delay-Risk Prediction Machine Learning Model & Precomputed Scores (M11)...")
+        model_stmt = select(ModelVersion).where(ModelVersion.version_tag == "v1.2.0-sentinel-supervised")
+        model_ver = (await db.execute(model_stmt)).scalar_one_or_none()
+        if not model_ver:
+            model_ver = ModelVersion(
+                name="delay_risk_gradient_ensemble",
+                version_tag="v1.2.0-sentinel-supervised",
+                algorithm="GradientEnsembleWithSHAPAttribution",
+                features_json=json.dumps([
+                    "days_in_current_status",
+                    "days_since_submission",
+                    "total_documents",
+                    "deficient_documents_count",
+                    "deficiency_notices_count",
+                    "unresolved_deficiencies_count",
+                    "has_evc_inspection",
+                    "regional_backlog_density",
+                ]),
+                metrics_json=json.dumps({
+                    "roc_auc": 0.892,
+                    "precision": 0.865,
+                    "recall": 0.841,
+                    "f1_score": 0.853,
+                    "mae_delay_days": 2.7,
+                }),
+                training_dataset_summary="Calibrated risk scoring engine trained on historical approval processing cycles and deficiency curing dynamics (SIH 2026 reference baseline).",
+                is_active=True,
+                description="Production risk model with explainable SHAP-style attribution for SIH 2026 PS 26262.",
+            )
+            db.add(model_ver)
+            await db.flush()
+
+        # Seed Predictions for existing applications
+        apps_stmt = select(Application)
+        all_apps = (await db.execute(apps_stmt)).scalars().all()
+        for a in all_apps:
+            pred_check = (await db.execute(select(DelayRiskPrediction).where(DelayRiskPrediction.application_id == a.id))).scalar_one_or_none()
+            if not pred_check:
+                score = 0.68 if a.current_status in ("DEFICIENCY_ISSUED", "HEARING_SCHEDULED", "SUBMITTED") else 0.18
+                cat = "HIGH" if score > 0.50 else "LOW"
+                delay = 11.5 if cat == "HIGH" else 2.5
+                factors = [
+                    {
+                        "factor": "unresolved_deficiencies" if cat == "HIGH" else "stage_dwell_time",
+                        "display_name": "Unresolved Deficiencies" if cat == "HIGH" else "Stage Progression",
+                        "impact": "INCREASES_RISK" if cat == "HIGH" else "REDUCES_RISK",
+                        "weight": 0.32 if cat == "HIGH" else -0.05,
+                        "observed_value": "2 items pending" if cat == "HIGH" else "Within SLA benchmark",
+                        "description": "Deficiency response is pending institutional upload" if cat == "HIGH" else "Application processing speed is on track",
+                    }
+                ]
+                pred = DelayRiskPrediction(
+                    application_id=a.id,
+                    model_version_id=model_ver.id,
+                    risk_score=score,
+                    risk_category=cat,
+                    estimated_delay_days=delay,
+                    confidence_score=0.88,
+                    factor_attributions_json=json.dumps(factors),
+                    is_automated_advisory=True,
+                    advisory_notes=f"Statutory Notice: Delay risk assessed at {cat} ({score*100:.1f}%). Advisory decision support for regional officers.",
+                )
+                db.add(pred)
+                a.delay_risk_score = score
+                a.delay_risk_factors_json = json.dumps(factors)
+
+        print("Seeding OCR document extraction jobs and compliance fields (M12)...")
+        docs_stmt = select(Document).where(Document.scan_status == "ACCEPTED")
+        accepted_docs = (await db.execute(docs_stmt)).scalars().all()
+        for doc in accepted_docs:
+            job_check = (await db.execute(select(OCRJob).where(OCRJob.document_id == doc.id))).scalar_one_or_none()
+            if not job_check:
+                ocr_job = OCRJob(
+                    document_id=doc.id,
+                    application_id=doc.application_id,
+                    status="COMPLETED",
+                    engine="pypdf_native_regex_extractor",
+                    page_count=3,
+                    extracted_text_preview="Extracted text from official verified document.",
+                    processing_time_ms=420,
+                )
+                db.add(ocr_job)
+                await db.flush()
+
+                f1 = OCRExtractedField(
+                    ocr_job_id=ocr_job.id,
+                    document_id=doc.id,
+                    application_id=doc.application_id,
+                    field_name="fire_noc_number",
+                    field_category="FIRE_NOC",
+                    raw_value="DFS/HQ/2026/NOC-9842",
+                    normalized_value="DFS/HQ/2026/NOC-9842",
+                    confidence=0.96,
+                    page_number=1,
+                    bounding_box_json=json.dumps({"x": 140, "y": 180, "width": 240, "height": 28}),
+                    verification_status="VERIFIED",
+                    is_automated_advisory=False,
+                    review_comments="Verified against State Fire & Rescue Services database",
+                )
+                f2 = OCRExtractedField(
+                    ocr_job_id=ocr_job.id,
+                    document_id=doc.id,
+                    application_id=doc.application_id,
+                    field_name="expiry_date",
+                    field_category="FIRE_NOC",
+                    raw_value="2027-01-14",
+                    normalized_value="2027-01-14",
+                    confidence=0.94,
+                    page_number=1,
+                    bounding_box_json=json.dumps({"x": 340, "y": 260, "width": 180, "height": 24}),
+                    verification_status="PENDING",
+                    is_automated_advisory=True,
+                )
+                db.add_all([f1, f2])
 
         await db.commit()
         print("Deterministic synthetic seed data generated successfully!")

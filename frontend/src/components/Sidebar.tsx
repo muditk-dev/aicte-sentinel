@@ -10,12 +10,16 @@ import {
   Users,
   Scale,
   Award,
+  BrainCircuit,
+  BookOpen,
 } from 'lucide-react'
 
 export const Sidebar: React.FC = () => {
   const navItems = [
     { name: 'Command Center', path: '/', icon: LayoutDashboard },
     { name: 'Statutory Applications', path: '/applications', icon: FileText },
+    { name: 'Delay-Risk Intelligence', path: '/intelligence', icon: BrainCircuit },
+    { name: 'APH Regulatory Assistant', path: '/aph-assistant', icon: BookOpen },
     { name: 'EVC Inspections & Pool', path: '/evc', icon: Users },
     { name: 'Committees & Hearings', path: '/committees', icon: Scale },
     { name: 'Statutory Decisions', path: '/decisions', icon: Award },

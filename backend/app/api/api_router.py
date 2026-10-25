@@ -14,6 +14,9 @@ from app.api.v1.inspections import router as inspections_router
 from app.api.v1.committees import router as committees_router
 from app.api.v1.hearings import router as hearings_router
 from app.api.v1.decisions import router as decisions_router
+from app.api.v1.intelligence import router as intelligence_router
+from app.api.v1.ocr import router as ocr_router
+from app.api.v1.aph import router as aph_router
 
 api_router = APIRouter()
 
@@ -34,4 +37,7 @@ api_router.include_router(inspections_router)
 api_router.include_router(committees_router)
 api_router.include_router(hearings_router)
 api_router.include_router(decisions_router)
+api_router.include_router(intelligence_router)
+api_router.include_router(ocr_router)
+api_router.include_router(aph_router)
 api_router.include_router(audit_router)

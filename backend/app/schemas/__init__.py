@@ -53,6 +53,25 @@ from app.schemas.decision import (
     StatutoryDecisionResponse,
     ReconsiderationRequest,
 )
+from app.schemas.intelligence import (
+    FactorAttributionResponse,
+    DelayRiskPredictionResponse,
+    ModelVersionResponse,
+    RiskOverviewItem,
+)
+from app.schemas.ocr import (
+    OCRExtractedFieldResponse,
+    OCRJobResponse,
+    OCRFieldVerifyRequest,
+)
+from app.schemas.aph import (
+    APHCitation,
+    APHClauseResponse,
+    APHSourceDocumentResponse,
+    APHQueryRequest,
+    APHQueryResponse,
+    APHFeedbackRequest,
+)
 
 __all__ = [
     "LoginRequest",
@@ -110,4 +129,17 @@ __all__ = [
     "StatutoryDecisionIssueRequest",
     "StatutoryDecisionResponse",
     "ReconsiderationRequest",
+    "FactorAttributionResponse",
+    "DelayRiskPredictionResponse",
+    "ModelVersionResponse",
+    "RiskOverviewItem",
+    "OCRExtractedFieldResponse",
+    "OCRJobResponse",
+    "OCRFieldVerifyRequest",
+    "APHCitation",
+    "APHClauseResponse",
+    "APHSourceDocumentResponse",
+    "APHQueryRequest",
+    "APHQueryResponse",
+    "APHFeedbackRequest",
 ]
