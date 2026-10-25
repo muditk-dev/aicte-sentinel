@@ -66,10 +66,10 @@ def sanitize_csv_cell(value: Any) -> str:
     """
     if value is None:
         return ""
-    str_val = str(value).strip()
+    str_val = str(value)
     if str_val.startswith(FORMULA_PREFIXES):
         return f"'{str_val}"
-    return str_val
+    return str_val.strip()
 
 
 def ensure_utc(dt: Optional[datetime]) -> Optional[datetime]:
