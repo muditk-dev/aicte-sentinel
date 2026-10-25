@@ -32,6 +32,10 @@ ENV/
 htmlcov/
 .mypy_cache/
 .ruff_cache/
+test-results/
+frontend/test-results/
+playwright-report/
+frontend/playwright-report/
 
 # Node / Frontend
 node_modules/

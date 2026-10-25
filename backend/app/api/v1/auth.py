@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.core.exceptions import AuthenticationError
 from app.core.config import settings
@@ -21,7 +22,7 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ):
     """Authenticate user with Argon2id password verification and emit JWT."""
-    stmt = select(User).where(User.email == payload.email)
+    stmt = select(User).options(selectinload(User.institution), selectinload(User.roles)).where(User.email == payload.email)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 

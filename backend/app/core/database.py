@@ -38,6 +38,12 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.rollback()
             raise
         finally:
+            if not settings.DATABASE_URL.startswith("sqlite"):
+                from app.security.tenant import TenantContext
+                try:
+                    await TenantContext.reset(session)
+                except Exception:
+                    pass
             await session.close()
 
 

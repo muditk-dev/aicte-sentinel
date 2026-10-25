@@ -62,7 +62,7 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     institution_id: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("institutions.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    institution: Mapped[Optional["Institution"]] = relationship("Institution", back_populates="users")
+    institution: Mapped[Optional["Institution"]] = relationship("Institution", back_populates="users", lazy="selectin")
 
     # Region assignment for Regional Officers
     assigned_region: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
