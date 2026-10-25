@@ -68,7 +68,7 @@ export const DashboardPage: React.FC = () => {
             className="inline-flex items-center px-4 py-2 text-xs font-semibold rounded-md text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 shadow-sm transition-colors"
           >
             <ShieldCheck className="w-4 h-4 mr-1.5 text-blue-700" />
-            Verify Merkle Ledger
+            Verify Audit Ledger
           </Link>
         </div>
       </div>

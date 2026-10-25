@@ -11,6 +11,46 @@ def get_auth_headers(user, roles, inst_id=None):
     return {"Authorization": f"Bearer {token}"}
 
 
+def make_test_pdf(text: str) -> bytes:
+    stream_content = f"BT\n/F1 12 Tf\n72 712 Td\n({text}) Tj\nET\n".encode("latin1")
+    stream_len = len(stream_content)
+    return (
+        f"""%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length {stream_len} >>
+stream
+""".encode("latin1")
+        + stream_content
+        + f"""endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000229 00000 n 
+0000000390 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+500
+%%EOF""".encode("latin1")
+    )
+
+
 @pytest.mark.asyncio
 async def test_delay_risk_prediction_features_and_attributions(client: AsyncClient, seed_test_data):
     data = seed_test_data
@@ -117,7 +157,9 @@ async def test_ocr_processing_and_field_verification(client: AsyncClient, db_ses
 
     # Create an ACCEPTED clean vault document
     storage_key = "test_fire_noc_clean.pdf"
-    sample_pdf_content = b"%PDF-1.4 sample fire noc issued by Directorate of Fire Services valid upto 2027-12-31"
+    sample_pdf_content = make_test_pdf(
+        "Issuing Authority: Directorate of Fire Services. Certificate No: NOC-2026-9842. Issued on: 2026-01-15. Valid upto: 2027-12-31."
+    )
     # Write to vault
     safe_path = storage_service.vault_dir / storage_key
     with open(safe_path, "wb") as f:

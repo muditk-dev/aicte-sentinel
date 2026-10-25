@@ -148,7 +148,7 @@ async def verify_extracted_field(
     """
     Scrutiny Officer verification of an AI-extracted field.
     Allows VERIFIED, CORRECTED (with corrected_value), or REJECTED.
-    Emits tamper-evident Merkle audit log.
+    Emits tamper-evident SHA-256 hash-chained audit log.
     """
     service = OCRService(db)
     updated_field = await service.verify_field(

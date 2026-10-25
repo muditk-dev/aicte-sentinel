@@ -50,7 +50,7 @@ class APHAssistantQuery(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     query_text: Mapped[str] = mapped_column(Text, nullable=False)
     response_text: Mapped[str] = mapped_column(Text, nullable=False)
     citations_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
-    retrieval_mode: Mapped[str] = mapped_column(String(50), default="HYBRID_SEMANTIC", nullable=False)
+    retrieval_mode: Mapped[str] = mapped_column(String(50), default="LEXICAL_BM25_PASSAGE_RETRIEVAL", nullable=False)
     is_automated_advisory: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     uncertainty_warning: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     feedback_rating: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 1 (useful) or -1 (not useful)

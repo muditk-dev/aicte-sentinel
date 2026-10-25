@@ -11,21 +11,25 @@ from app.models.deficiency import DeficiencyNotice, DeficiencyItem
 from app.models.evc import EVCInspection
 from app.models.institution import Institution
 from app.models.intelligence import ModelVersion, DelayRiskPrediction
+from app.intelligence.model_trainer import train_and_evaluate_model
 
 logger = logging.getLogger("sentinel.delay_predictor")
 
 MODEL_VERSION_TAG = "v1.2.0-sentinel-supervised"
 MODEL_NAME = "delay_risk_gradient_ensemble"
 TRAINING_SUMMARY = (
-    "Calibrated risk scoring engine trained on historical approval processing cycles "
-    "and deficiency curing dynamics (SIH 2026 reference baseline). Designed with strict "
-    "pre-outcome feature boundaries to prevent temporal data leakage."
+    "Reproducibly evaluated on synthetic technical education workflow baseline (600 observations, "
+    "75/25 train-test split, seed=42). Benchmark comparison: Majority Baseline Accuracy: 54.0% -> "
+    "Gradient Boosting Accuracy: 65.3%, ROC-AUC: 0.728. Explicitly identified as synthetic baseline "
+    "demonstration model; not calibrated on multi-year live production data."
 )
 
 
 class DelayPredictorService:
     """
     Explainable delay-risk prediction engine.
+    Explainability: Additive Feature Impact Decomposition (Heuristic Model).
+    Note: Factor attribution weights are linear decomposed scores, NOT KernelSHAP/TreeSHAP values.
     Statutory Guardrail: Output is strictly ADVISORY to aid officer scheduling and resource allocation.
     AI predictions cannot trigger state transitions or statutory approvals/rejections.
     """
@@ -38,6 +42,8 @@ class DelayPredictorService:
         result = await self.db.execute(stmt)
         model = result.scalar_one_or_none()
         if not model:
+            # Execute real reproducible training and evaluation
+            eval_result = train_and_evaluate_model(random_state=42)
             features = [
                 "days_in_current_status",
                 "days_since_submission",
@@ -48,22 +54,16 @@ class DelayPredictorService:
                 "has_evc_inspection",
                 "regional_backlog_density",
             ]
-            metrics = {
-                "roc_auc": 0.892,
-                "precision": 0.865,
-                "recall": 0.841,
-                "f1_score": 0.853,
-                "mae_delay_days": 2.7,
-            }
+            metrics = eval_result["metrics"]
             model = ModelVersion(
                 name=MODEL_NAME,
                 version_tag=MODEL_VERSION_TAG,
-                algorithm="GradientEnsembleWithSHAPAttribution",
+                algorithm="GradientBoostingWithAdditiveAttribution",
                 features_json=json.dumps(features),
                 metrics_json=json.dumps(metrics),
                 training_dataset_summary=TRAINING_SUMMARY,
                 is_active=True,
-                description="Production risk model with explainable SHAP-style attribution for SIH 2026 PS 26262.",
+                description="Synthetic demonstration risk model evaluated on held-out test split for SIH 2026 PS 26262.",
             )
             self.db.add(model)
             await self.db.commit()
@@ -162,6 +162,7 @@ class DelayPredictorService:
             "deficiency_notices_count": deficiency_notices_count,
             "unresolved_deficiencies_count": unresolved_deficiencies_count,
             "has_evc": has_evc,
+            "has_evc_inspection": has_evc,
             "evc_pending": evc_pending,
             "regional_backlog_density": regional_backlog,
             "status": application.current_status,

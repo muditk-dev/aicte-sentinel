@@ -124,12 +124,13 @@ DEFAULT_SEED_CLAUSES = [
 
 class APHAssistantService:
     """
-    APH-Grounded Retrieval-Augmented Generation (RAG) regulatory assistant.
+    APH-Grounded Authoritative Lexical Passage Retrieval assistant.
     Features:
     - Authoritative chunking of official AICTE Approval Process Handbook (APH 2026-27).
-    - BM25/TF-IDF lexical retrieval with exact token scoring.
+    - BM25 lexical passage retrieval with exact token term frequency scoring against indexed clauses.
+    - Deterministic execution without external LLM data egress, preventing statutory hallucinations.
     - Grounded citation generation referencing exact Chapter, Clause, and Page.
-    - Explicit uncertainty detection when query exceeds handbook boundaries.
+    - Explicit uncertainty detection when query exceeds handbook boundaries (score < 0.20).
     - Statutory disclaimer: advisory non-binding response.
     """
 
@@ -261,14 +262,23 @@ class APHAssistantService:
         if not trimmed_query:
             raise SentinelException("Query text cannot be empty", code="EMPTY_QUERY", status_code=400)
 
+        query_tokens = self._tokenize(trimmed_query)
         retrievals = await self.retrieve_relevant_clauses(trimmed_query, top_k=3)
         citations: List[Dict[str, Any]] = []
         response_text = ""
         uncertainty_warning: Optional[str] = None
-        retrieval_mode = "AUTHORITATIVE_PASSAGE_RETRIEVAL"
+        retrieval_mode = "LEXICAL_BM25_PASSAGE_RETRIEVAL"
+
+        # Calculate query term coverage on top retrieved clause to prevent single-adjective false positives
+        term_coverage = 0.0
+        if retrievals and query_tokens:
+            top_clause = retrievals[0][0]
+            top_tokens = set(self._tokenize(top_clause.content_text + " " + top_clause.clause_title))
+            matched_terms = [t for t in query_tokens if t in top_tokens]
+            term_coverage = len(matched_terms) / len(query_tokens)
 
         # Check if relevance is too low or empty (Uncertainty threshold)
-        if not retrievals or retrievals[0][1] < 0.20:
+        if not retrievals or retrievals[0][1] < 0.25 or term_coverage < 0.20:
             uncertainty_warning = (
                 "The current AICTE Approval Process Handbook (APH 2026-27) corpus does not contain "
                 "sufficient authoritative evidence to answer this specific query with high confidence. "

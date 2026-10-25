@@ -94,32 +94,37 @@ AICTE Sentinel is a secure, role-based, end-to-end regulatory platform designed 
   - Final decision immutability and SHA-256 non-repudiation attestation verified.
 
 ### Phase 4: Compliance Intelligence, Risk Prediction & APH QA (M11, M12, M13)
-- **Status:** **Implemented & Fully Tested**
+- **Status:** **Implemented, Verified & Hardened**
 - **Prerequisites:** Phase 2 & 3 operational.
 - **Deliverables:**
-  - Secure OCR & Structured Compliance Field Extractor (M12):
+  - Secure Document Extraction & Structured Compliance Field Extractor (M12):
     - Clean vault quarantine prerequisite: Only documents with `scan_status == 'ACCEPTED'` can undergo extraction.
-    - PDF text layer reader and token-based parser with bounding-box generation for Fire NOC, Land Title, Building Plan, and Financial Guarantees.
-    - Human scrutiny officer verification workflow (`VERIFIED`, `CORRECTED`, `REJECTED`) with chained Merkle audit trail logging.
+    - PDF text layer reader and regex-based parser with real date/validity checks (`COMPLIANT_ACTIVE` vs `EXPIRED`).
+    - Eliminates fabricated bounding boxes (`bounding_box: None`) and dummy fallback values (e.g. no fake `"5.25 Acres"` or `"DFS/HQ/2026/NOC-9842"`).
+    - Detects scanned/raster-only PDFs with no extractable text layer, documenting that scanned optical character recognition requires external Tesseract binary (uninstalled).
+    - Human scrutiny officer verification workflow (`VERIFIED`, `CORRECTED`, `REJECTED`) with immutable SHA-256 chained audit trail logging.
     - Embedded Document Intelligence review drawer in the React Scrutiny Desk.
   - Explainable Delay-Risk Model & Pipeline Bottlenecks (M11):
     - Leakage-free feature extractor observing pre-outcome metrics (stage dwell time, open deficiencies, EVC pending state, regional queue load).
-    - Calibrated risk scoring engine (0.0 to 1.0) mapping to `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` risk categories and delay day projections.
-    - SHAP-style explainable feature attributions highlighting relative risk weights, observed values, and human-readable root cause descriptions.
-    - Transparent model metadata registry (`model_versions`) tracking ROC-AUC, Precision, Recall, MAE, and synthetic demonstration training provenance.
+    - Calibrated risk scoring engine (0.01 to 0.99) mapping to `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` risk categories and delay day projections.
+    - Additive Feature Impact Decomposition (Heuristic Model, accurately documented as linear decomposed factor weights, NOT KernelSHAP/TreeSHAP).
+    - Reproducible synthetic dataset training and evaluation pipeline (`backend/app/intelligence/model_trainer.py`) generating genuine measured metrics: ROC-AUC 0.728, Precision 0.688, Recall 0.654, F1 0.671, Accuracy 0.653 vs Baseline 0.540, MAE 5.7 days, flagged transparently with `is_synthetic_demonstration: True`.
+    - Advisory non-mutation guardrails: Predictions cannot trigger state transitions or statutory approvals/rejections.
     - Executive command pipeline heatmap and interactive risk overview page.
-  - APH-Grounded Retrieval-Augmented Generation (RAG) Assistant (M13):
-    - Multi-chapter chunking and indexing of official AICTE Approval Process Handbook (APH 2026-27).
-    - Hybrid BM25 lexical and semantic vector retrieval with exact chapter, clause number, page, and excerpt citations.
-    - Non-negotiable statutory safeguards: Explicit uncertainty detection when questions exceed corpus evidence ("Insufficient authoritative evidence"), with non-binding advisory disclaimers.
-    - Conversational chat interface, quick query presets, user history, and thumbs up/down audit logging.
+  - APH-Grounded Regulatory Assistant (M13):
+    - Multi-chapter chunking and indexing of official AICTE Approval Process Handbook (APH 2026-27) with SHA-256 hash and official source URL.
+    - Lexical BM25 Authoritative Passage Retrieval (`LEXICAL_BM25_PASSAGE_RETRIEVAL`) with exact chapter, clause number, page, and excerpt citations.
+    - Deterministic execution without external LLM data egress, eliminating statutory hallucination risk.
+    - Non-negotiable statutory safeguards: Explicit uncertainty detection when questions exceed corpus evidence or keyword coverage falls below threshold ("Notice of Insufficient Corpus Coverage"), with non-binding advisory disclaimers.
+    - Conversational chat interface, quick query presets, user history, and thumbs up/down feedback logging.
 - **Verification Results:**
-  - 33 automated tests passing in Pytest (100% pass rate).
-  - Clean TypeScript + Vite frontend production build (0 compiler errors, built in 5.45s).
+  - 48 automated tests passing in Pytest (100% pass rate).
+  - Clean TypeScript + Vite frontend production build (0 compiler errors, built in 11.55s).
   - Clean vault quarantine enforcement on OCR verified.
-  - OCR field verification, correction, and audit chaining verified.
+  - Scanned PDF detection, malformed PDF rejection, unsupported MIME format rejection verified.
+  - OCR field verification, correction, and SHA-256 audit chaining verified.
   - Grounded APH citations and out-of-corpus uncertainty fallback verified.
-  - Tenant privacy and role-based access control verified.
+  - Continuous SHA-256 hash-chain ledger integrity and tamper detection verified.
 
 ### Phase 5: Tamper-Evident Ledger, Post-Approval & Maker-Checker Admin (M08, M09, M10, M14, M15, M16)
 - **Prerequisites:** Phases 1–4 complete.

@@ -320,17 +320,17 @@ export const RiskIntelligencePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Detailed Explainable SHAP Attribution Panel (5 cols) */}
+        {/* Right Column: Detailed Explainable Additive Factor Attribution Panel (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
-                  SHAP Explainability Decomposition
+                  Additive Factor Attribution & Risk Decomposition
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  Feature-level attribution weights driving the delay risk score.
+                  Linear factor impacts and directional weights driving the advisory delay-risk indicator.
                 </p>
               </div>
 
@@ -440,21 +440,25 @@ export const RiskIntelligencePage: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-400">{mv.training_dataset_summary}</div>
-                <div className="grid grid-cols-3 gap-2 pt-1 font-mono text-[10px]">
+                <div className="grid grid-cols-4 gap-2 pt-1 font-mono text-[10px]">
                   <div className="p-1.5 bg-slate-800 rounded border border-slate-700 text-center">
                     <span className="text-slate-400 block">ROC-AUC</span>
                     <span className="font-bold text-emerald-400">
-                      {mv.metrics?.roc_auc ?? '0.89'}
+                      {mv.metrics?.roc_auc ?? 'N/A'}
                     </span>
                   </div>
                   <div className="p-1.5 bg-slate-800 rounded border border-slate-700 text-center">
-                    <span className="text-slate-400 block">F1 Score</span>
-                    <span className="font-bold text-blue-400">{mv.metrics?.f1_score ?? '0.85'}</span>
+                    <span className="text-slate-400 block">Precision</span>
+                    <span className="font-bold text-blue-400">{mv.metrics?.precision ?? 'N/A'}</span>
                   </div>
                   <div className="p-1.5 bg-slate-800 rounded border border-slate-700 text-center">
-                    <span className="text-slate-400 block">MAE (Days)</span>
+                    <span className="text-slate-400 block">Recall</span>
+                    <span className="font-bold text-indigo-400">{mv.metrics?.recall ?? 'N/A'}</span>
+                  </div>
+                  <div className="p-1.5 bg-slate-800 rounded border border-slate-700 text-center">
+                    <span className="text-slate-400 block">Baseline vs Acc</span>
                     <span className="font-bold text-amber-400">
-                      {mv.metrics?.mae_delay_days ?? '2.7'}d
+                      {mv.metrics?.baseline_accuracy ?? '0.54'} &rarr; {mv.metrics?.accuracy ?? '0.65'}
                     </span>
                   </div>
                 </div>

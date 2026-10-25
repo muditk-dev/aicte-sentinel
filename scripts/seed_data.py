@@ -51,6 +51,7 @@ from app.security.password import hash_password
 from app.audit.service import record_audit_event
 from app.storage.service import storage_service
 from app.intelligence.aph_service import DEFAULT_SEED_CLAUSES
+from app.intelligence.model_trainer import train_and_evaluate_model
 
 
 async def seed_phase4_data(db):
@@ -89,10 +90,11 @@ async def seed_phase4_data(db):
     model_stmt = select(ModelVersion).where(ModelVersion.version_tag == "v1.2.0-sentinel-supervised")
     model_ver = (await db.execute(model_stmt)).scalar_one_or_none()
     if not model_ver:
+        eval_res = train_and_evaluate_model(random_state=42)
         model_ver = ModelVersion(
             name="delay_risk_gradient_ensemble",
             version_tag="v1.2.0-sentinel-supervised",
-            algorithm="GradientEnsembleWithSHAPAttribution",
+            algorithm="GradientBoostingWithAdditiveAttribution",
             features_json=json.dumps([
                 "days_in_current_status",
                 "days_since_submission",
@@ -103,16 +105,15 @@ async def seed_phase4_data(db):
                 "has_evc_inspection",
                 "regional_backlog_density",
             ]),
-            metrics_json=json.dumps({
-                "roc_auc": 0.892,
-                "precision": 0.865,
-                "recall": 0.841,
-                "f1_score": 0.853,
-                "mae_delay_days": 2.7,
-            }),
-            training_dataset_summary="Calibrated risk scoring engine trained on historical approval processing cycles and deficiency curing dynamics (SIH 2026 reference baseline).",
+            metrics_json=json.dumps(eval_res["metrics"]),
+            training_dataset_summary=(
+                "Reproducibly evaluated on synthetic technical education workflow baseline (600 observations, "
+                "75/25 train-test split, seed=42). Benchmark comparison: Majority Baseline Accuracy: 54.0% -> "
+                "Gradient Boosting Accuracy: 65.3%, ROC-AUC: 0.728. Explicitly identified as synthetic baseline "
+                "demonstration model; not calibrated on multi-year live production data."
+            ),
             is_active=True,
-            description="Production risk model with explainable SHAP-style attribution for SIH 2026 PS 26262.",
+            description="Synthetic demonstration risk model evaluated on held-out test split for SIH 2026 PS 26262.",
         )
         db.add(model_ver)
         await db.flush()
@@ -870,10 +871,11 @@ async def seed():
         model_stmt = select(ModelVersion).where(ModelVersion.version_tag == "v1.2.0-sentinel-supervised")
         model_ver = (await db.execute(model_stmt)).scalar_one_or_none()
         if not model_ver:
+            eval_res = train_and_evaluate_model(random_state=42)
             model_ver = ModelVersion(
                 name="delay_risk_gradient_ensemble",
                 version_tag="v1.2.0-sentinel-supervised",
-                algorithm="GradientEnsembleWithSHAPAttribution",
+                algorithm="GradientBoostingWithAdditiveAttribution",
                 features_json=json.dumps([
                     "days_in_current_status",
                     "days_since_submission",
@@ -884,16 +886,15 @@ async def seed():
                     "has_evc_inspection",
                     "regional_backlog_density",
                 ]),
-                metrics_json=json.dumps({
-                    "roc_auc": 0.892,
-                    "precision": 0.865,
-                    "recall": 0.841,
-                    "f1_score": 0.853,
-                    "mae_delay_days": 2.7,
-                }),
-                training_dataset_summary="Calibrated risk scoring engine trained on historical approval processing cycles and deficiency curing dynamics (SIH 2026 reference baseline).",
+                metrics_json=json.dumps(eval_res["metrics"]),
+                training_dataset_summary=(
+                    "Reproducibly evaluated on synthetic technical education workflow baseline (600 observations, "
+                    "75/25 train-test split, seed=42). Benchmark comparison: Majority Baseline Accuracy: 54.0% -> "
+                    "Gradient Boosting Accuracy: 65.3%, ROC-AUC: 0.728. Explicitly identified as synthetic baseline "
+                    "demonstration model; not calibrated on multi-year live production data."
+                ),
                 is_active=True,
-                description="Production risk model with explainable SHAP-style attribution for SIH 2026 PS 26262.",
+                description="Synthetic demonstration risk model evaluated on held-out test split for SIH 2026 PS 26262.",
             )
             db.add(model_ver)
             await db.flush()

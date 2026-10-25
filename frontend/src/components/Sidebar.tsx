@@ -25,7 +25,7 @@ export const Sidebar: React.FC = () => {
     { name: 'Statutory Decisions', path: '/decisions', icon: Award },
     { name: 'Institution Registry', path: '/institutions', icon: Building },
     { name: 'Workflow Engine', path: '/workflows', icon: GitBranch },
-    { name: 'Audit & Merkle Ledger', path: '/audit', icon: ShieldCheck },
+    { name: 'Audit Hash-Chain Ledger', path: '/audit', icon: ShieldCheck },
     { name: 'System Diagnostics', path: '/diagnostics', icon: Activity },
   ]
 
