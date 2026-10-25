@@ -7,12 +7,18 @@ import {
   GitBranch,
   ShieldCheck,
   Activity,
+  Users,
+  Scale,
+  Award,
 } from 'lucide-react'
 
 export const Sidebar: React.FC = () => {
   const navItems = [
     { name: 'Command Center', path: '/', icon: LayoutDashboard },
     { name: 'Statutory Applications', path: '/applications', icon: FileText },
+    { name: 'EVC Inspections & Pool', path: '/evc', icon: Users },
+    { name: 'Committees & Hearings', path: '/committees', icon: Scale },
+    { name: 'Statutory Decisions', path: '/decisions', icon: Award },
     { name: 'Institution Registry', path: '/institutions', icon: Building },
     { name: 'Workflow Engine', path: '/workflows', icon: GitBranch },
     { name: 'Audit & Merkle Ledger', path: '/audit', icon: ShieldCheck },

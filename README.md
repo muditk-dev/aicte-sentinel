@@ -121,17 +121,17 @@ The seed command initializes deterministic test accounts across every statutory 
 ## 6. Automated Testing & Build Validation
 
 ### 6.1 Backend Test Suite (Pytest)
-Executes 19 comprehensive unit and integration tests against an isolated in-memory SQLite database, verifying auth tokens, tenant RLS isolation, guarded state machine transitions, magic-byte file signature validation, ClamAV antivirus integration, quarantined download denial, scrutiny findings RBAC, deficiency notice lifecycle, deadline enforcement, and cryptographic audit hash validation:
+Executes 26 comprehensive unit and integration tests against an isolated in-memory SQLite database, verifying auth tokens, tenant RLS isolation, guarded state machine transitions, magic-byte file signature validation, ClamAV antivirus integration, quarantined download denial, scrutiny findings RBAC, deficiency notice lifecycle, deadline enforcement, expert conflict-of-interest detection & blocking, documented reviewer overrides, scheduling conflict prevention, EVC report versioning & SHA-256 payload digests, committee quorum rules, and statutory decision immutability with non-repudiation attestation:
 ```powershell
 .\.venv\Scripts\pytest -v backend/tests
 ```
-**Outcome:** `19 passed in ~12s (100% pass rate)`
+**Outcome:** `26 passed (100% pass rate)`
 
 ### 6.2 Frontend Production Build (TypeScript + Vite)
 ```powershell
 npm --prefix frontend run build
 ```
-**Outcome:** `Built in ~8s (0 TypeScript errors, production assets emitted in frontend/dist/)`
+**Outcome:** `Built in ~11s (0 TypeScript errors, production assets emitted in frontend/dist/)`
 
 ---
 
@@ -151,5 +151,22 @@ npm --prefix frontend run build
   - `POST /api/v1/applications/{app_id}/deficiencies` — Issue deficiency notice with cure window.
   - `POST /api/v1/deficiencies/{notice_id}/respond` — Submit institutional clarification.
   - `POST /api/v1/deficiencies/{notice_id}/review` — Officer resolution or reopening.
+- **EVC Inspections & Expert Roster (M06):**
+  - `GET /api/v1/experts` — List verified expert roster with role-based data masking.
+  - `POST /api/v1/experts/{id}/conflict-check` — Evaluate statutory conflict of interest.
+  - `POST /api/v1/inspections` — Schedule Physical, Virtual, or Hybrid EVC inspection.
+  - `POST /api/v1/inspections/{id}/experts` — Assign panel members (blocks conflicts without documented override).
+  - `POST /api/v1/inspections/{id}/reports` — Submit versioned inspection report with SHA-256 payload digest.
+  - `POST /api/v1/inspections/{id}/reports/{version_id}/review` — Review report (ACCEPTED or RETURNED).
+- **Committee Hearings & Dockets (M07):**
+  - `GET /api/v1/committees` — List Standing Hearing (SHC) & Standing Appellate (SAC) committees.
+  - `POST /api/v1/hearings` — Schedule hearing session.
+  - `POST /api/v1/hearings/{id}/dockets` — Docket application for committee adjudication.
+  - `POST /api/v1/hearings/{id}/attendance` — Record member attendances with quorum validation.
+  - `POST /api/v1/hearings/{id}/minutes` — Record minutes and advisory recommendations (enforces quorum).
+- **Authorized Statutory Decisions (M07):**
+  - `GET /api/v1/decisions` — List rendered statutory decisions (tenant-isolated).
+  - `POST /api/v1/decisions` — Render legally consequential decision (Approved, Conditionally Approved, Rejected) with mandatory condition generator, human officer attestation, and SHA-256 non-repudiation digest.
+  - `POST /api/v1/decisions/{id}/reconsider` — Docket for formal Standing Appellate Committee review.
 - **Cryptographic Audit Verifier:** `GET /api/v1/audit/verify` — Traverses the entire SHA-256 event chain from Genesis and validates that zero database modifications or deletions have occurred.
 - **OpenAPI Schema:** `GET /api/docs` or `GET /api/openapi.json`.

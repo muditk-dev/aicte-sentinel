@@ -7,6 +7,9 @@ from app.models.application import Application, ApplicationEvent
 from app.models.audit import AuditEvent, MerkleRoot
 from app.models.document import Document, DocumentVersion, ScrutinyFinding
 from app.models.deficiency import DeficiencyNotice, DeficiencyItem, DeficiencyResponse, Notification
+from app.models.evc import Expert, EVCInspection, EVCInspectionExpert, EVCReportVersion
+from app.models.committee import Committee, CommitteeMembership, Hearing, HearingDocket, HearingAttendance
+from app.models.decision import StatutoryDecision, DecisionCondition
 
 __all__ = [
     "Base",
@@ -31,4 +34,15 @@ __all__ = [
     "DeficiencyItem",
     "DeficiencyResponse",
     "Notification",
+    "Expert",
+    "EVCInspection",
+    "EVCInspectionExpert",
+    "EVCReportVersion",
+    "Committee",
+    "CommitteeMembership",
+    "Hearing",
+    "HearingDocket",
+    "HearingAttendance",
+    "StatutoryDecision",
+    "DecisionCondition",
 ]

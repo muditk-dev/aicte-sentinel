@@ -215,3 +215,232 @@ export interface NotificationItem {
   delivery_status: string;
   created_at: string;
 }
+
+// --- M06: EVC Inspections & Expert Pool ---
+
+export interface Expert {
+  id: string;
+  user_id?: string;
+  name: string;
+  email: string;
+  phone?: string;
+  designation: string;
+  organization: string;
+  expert_type: string;
+  qualifications: string;
+  experience_years: number;
+  specializations: string[];
+  affiliated_institution_ids: string[];
+  alma_mater: string;
+  state: string;
+  district: string;
+  availability_status: string;
+  conflict_declarations: string[];
+  is_active: boolean;
+  verification_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConflictCheckResult {
+  expert_id: string;
+  expert_name: string;
+  application_id: string;
+  institution_id: string;
+  institution_name: string;
+  has_conflict: boolean;
+  is_blocked: boolean;
+  policy_version: string;
+  conflict_reasons: string[];
+}
+
+export interface EVCPanelMember {
+  id: string;
+  inspection_id: string;
+  expert_id: string;
+  expert_name: string;
+  expert_designation: string;
+  expert_organization: string;
+  role: string;
+  conflict_check_passed: boolean;
+  conflict_notes?: string;
+  attendance_status: string;
+  attendance_timestamp?: string;
+  sign_off_status: string;
+  sign_off_timestamp?: string;
+  sign_off_remarks?: string;
+}
+
+export interface EVCReportVersion {
+  id: string;
+  inspection_id: string;
+  version_number: number;
+  application_id: string;
+  submitted_by_user_id: string;
+  submitted_by_name?: string;
+  submitted_at: string;
+  sha256_hash: string;
+  overall_recommendation: string;
+  infrastructure_score?: number;
+  faculty_verification_status: string;
+  land_building_status: string;
+  laboratories_equipment_status: string;
+  safety_and_amenities_status: string;
+  observations: string;
+  deficiencies_identified?: string;
+  checklist_data: Record<string, any>;
+  evidence_references: string[];
+  location_evidence: Record<string, any>;
+  virtual_attendance: Record<string, any>;
+  review_status: string;
+  reviewed_by_user_id?: string;
+  reviewed_by_name?: string;
+  reviewed_at?: string;
+  review_remarks?: string;
+  created_at: string;
+}
+
+export interface EVCInspection {
+  id: string;
+  application_id: string;
+  institution_id: string;
+  institution_name?: string;
+  inspection_number: string;
+  inspection_mode: string;
+  status: string;
+  scheduled_start_date: string;
+  scheduled_end_date: string;
+  actual_inspection_date?: string;
+  chairperson_id?: string;
+  chairperson_name?: string;
+  meeting_link?: string;
+  location_coordinates?: string;
+  location_address?: string;
+  cancellation_reason?: string;
+  assigned_by_user_id: string;
+  panel_members: EVCPanelMember[];
+  latest_report?: EVCReportVersion;
+  created_at: string;
+  updated_at: string;
+}
+
+// --- M07: Committee Hearings & Docketing ---
+
+export interface CommitteeMembership {
+  id: string;
+  committee_id: string;
+  user_id?: string;
+  expert_id?: string;
+  member_name: string;
+  member_role: string;
+  conflict_declarations: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Committee {
+  id: string;
+  code: string;
+  name: string;
+  committee_type: string;
+  description?: string;
+  quorum_required: number;
+  valid_from: string;
+  valid_to?: string;
+  is_active: boolean;
+  memberships: CommitteeMembership[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface HearingDocket {
+  id: string;
+  hearing_id: string;
+  application_id: string;
+  institution_id: string;
+  institution_name?: string;
+  application_number?: string;
+  docket_number: string;
+  matter_summary: string;
+  referred_by: string;
+  institutional_representative_name?: string;
+  docket_status: string;
+  docket_recommendation?: string;
+  docket_remarks?: string;
+  created_at: string;
+}
+
+export interface HearingAttendance {
+  id: string;
+  hearing_id: string;
+  member_name: string;
+  member_role: string;
+  user_id?: string;
+  attended: boolean;
+  attendance_mode: string;
+  conflict_declared_for_docket_ids?: string;
+  created_at: string;
+}
+
+export interface Hearing {
+  id: string;
+  committee_id: string;
+  committee_name?: string;
+  hearing_number: string;
+  hearing_type: string;
+  status: string;
+  scheduled_date: string;
+  meeting_mode: string;
+  venue_or_link: string;
+  agenda: string;
+  postponement_reason?: string;
+  cancellation_reason?: string;
+  chairperson_name?: string;
+  conducted_at?: string;
+  minutes_of_meeting?: string;
+  final_recommendation?: string;
+  recommendation_summary?: string;
+  dockets: HearingDocket[];
+  attendances: HearingAttendance[];
+  created_at: string;
+  updated_at: string;
+}
+
+// --- Authorized Statutory Decisions ---
+
+export interface DecisionCondition {
+  id: string;
+  decision_id: string;
+  condition_code: string;
+  description: string;
+  due_date: string;
+  compliance_status: string;
+  created_at: string;
+}
+
+export interface StatutoryDecision {
+  id: string;
+  application_id: string;
+  application_number?: string;
+  institution_id: string;
+  institution_name?: string;
+  decision_number: string;
+  decision_type: string;
+  academic_year: string;
+  authority_role: string;
+  authorized_by_user_id: string;
+  authorized_by_name?: string;
+  authorized_at: string;
+  governing_policy_version: string;
+  reasons: string;
+  evidence_references: string[];
+  intake_approved?: number;
+  valid_for_years: number;
+  is_final: boolean;
+  is_reconsidered: boolean;
+  reconsideration_reference?: string;
+  sha256_attestation: string;
+  declaration_text: string;
+  conditions: DecisionCondition[];
+  created_at: string;
+}

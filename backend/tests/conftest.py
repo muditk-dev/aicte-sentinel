@@ -78,7 +78,9 @@ async def seed_test_data(db_session: AsyncSession):
     r_admin = Role(code="SUPER_ADMIN", name="Super Admin", permissions=[p1, p2])
     r_inst = Role(code="INSTITUTION_ADMIN", name="Institution Admin", permissions=[p1])
     r_scrutiny = Role(code="SCRUTINY_OFFICER", name="Scrutiny Officer", permissions=[p2])
-    db_session.add_all([r_admin, r_inst, r_scrutiny])
+    r_ro = Role(code="REGIONAL_OFFICER", name="Regional Officer", permissions=[p1, p2])
+    r_expert = Role(code="EVC_EXPERT", name="EVC Expert", permissions=[p2])
+    db_session.add_all([r_admin, r_inst, r_scrutiny, r_ro, r_expert])
     await db_session.flush()
 
     # Users
@@ -104,7 +106,21 @@ async def seed_test_data(db_session: AsyncSession):
         full_name="Scrutiny Officer Test",
         roles=[r_scrutiny],
     )
-    db_session.add_all([u_admin, u_inst, u_scrutiny])
+    u_ro = User(
+        id="user-ro-1",
+        email="ro@aicte-india.org",
+        hashed_password=hash_password("Regional@2026!"),
+        full_name="Regional Officer Test",
+        roles=[r_ro],
+    )
+    u_expert = User(
+        id="user-expert-1",
+        email="expert@aicte-india.org",
+        hashed_password=hash_password("Expert@2026!"),
+        full_name="Expert Panelist Test",
+        roles=[r_expert],
+    )
+    db_session.add_all([u_admin, u_inst, u_scrutiny, u_ro, u_expert])
     await db_session.flush()
 
     # Workflow Template & Version
@@ -145,7 +161,7 @@ async def seed_test_data(db_session: AsyncSession):
 
     return {
         "institution": inst,
-        "users": {"admin": u_admin, "inst": u_inst, "scrutiny": u_scrutiny},
+        "users": {"admin": u_admin, "inst": u_inst, "scrutiny": u_scrutiny, "ro": u_ro, "expert": u_expert},
         "template": tmpl,
         "version": version,
         "application": application,

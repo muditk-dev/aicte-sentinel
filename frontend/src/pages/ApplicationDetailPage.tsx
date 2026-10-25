@@ -5,6 +5,8 @@ import { applicationService } from '../services/applicationService'
 import { documentService } from '../services/documentService'
 import { scrutinyService } from '../services/scrutinyService'
 import { deficiencyService } from '../services/deficiencyService'
+import { evcService } from '../services/evcService'
+import { decisionService } from '../services/decisionService'
 import { authService } from '../services/authService'
 import { StatusBadge } from '../components/StatusBadge'
 import { Modal } from '../components/Modal'
@@ -25,6 +27,8 @@ import {
   XCircle,
   Plus,
   Info,
+  Users,
+  Award,
 } from 'lucide-react'
 
 export const ApplicationDetailPage: React.FC = () => {
@@ -32,7 +36,7 @@ export const ApplicationDetailPage: React.FC = () => {
   const queryClient = useQueryClient()
   const user = authService.getCurrentUser()
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'scrutiny' | 'deficiencies' | 'timeline'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'scrutiny' | 'deficiencies' | 'evc' | 'decision' | 'timeline'>('overview')
 
   // Statutory Transition State
   const [targetStatus, setTargetStatus] = useState('')
@@ -92,6 +96,18 @@ export const ApplicationDetailPage: React.FC = () => {
   const { data: notices = [], isLoading: noticesLoading } = useQuery({
     queryKey: ['deficiency-notices', id],
     queryFn: () => deficiencyService.listNotices(id),
+    enabled: !!id,
+  })
+
+  const { data: appInspections = [] } = useQuery({
+    queryKey: ['app-inspections', id],
+    queryFn: () => evcService.listInspections({ application_id: id }),
+    enabled: !!id,
+  })
+
+  const { data: appDecision } = useQuery({
+    queryKey: ['app-decision', id],
+    queryFn: () => decisionService.getDecisionByApplication(id),
     enabled: !!id,
   })
 
@@ -393,6 +409,28 @@ export const ApplicationDetailPage: React.FC = () => {
           >
             <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
             Deficiency Notices ({notices.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('evc')}
+            className={`pb-3 px-1 border-b-2 flex items-center transition-colors ${
+              activeTab === 'evc'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 mr-1.5" />
+            EVC Inspections ({appInspections.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('decision')}
+            className={`pb-3 px-1 border-b-2 flex items-center transition-colors ${
+              activeTab === 'decision'
+                ? 'border-blue-700 text-blue-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5 mr-1.5" />
+            Statutory Determination {appDecision ? '(Rendered)' : ''}
           </button>
           <button
             onClick={() => setActiveTab('timeline')}
@@ -902,6 +940,192 @@ export const ApplicationDetailPage: React.FC = () => {
                 </div>
               )
             })
+          )}
+        </div>
+      )}
+
+      {/* TAB: EVC INSPECTIONS */}
+      {activeTab === 'evc' && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center bg-white p-4 rounded-lg border border-slate-200">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center">
+                <Users className="w-4 h-4 mr-1.5 text-blue-700" />
+                Expert Visit Committee (EVC) Physical & Virtual Inspections
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Statutory inspection panels, verified conflict checks, and versioned reports for this docket.
+              </p>
+            </div>
+            <Link
+              to="/evc"
+              className="text-xs font-semibold px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100"
+            >
+              Open EVC Desk →
+            </Link>
+          </div>
+
+          {appInspections.length === 0 ? (
+            <div className="bg-white rounded-lg border border-slate-200 p-12 text-center text-slate-500 text-xs">
+              <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="font-semibold text-slate-700">No EVC inspections scheduled for this docket</p>
+              <p className="mt-1">Applications requiring physical or virtual on-site verification will have panels assigned by the Regional Office.</p>
+            </div>
+          ) : (
+            appInspections.map((insp) => (
+              <div key={insp.id} className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm space-y-4">
+                <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                  <div className="flex items-center space-x-3">
+                    <span className="font-mono font-bold text-sm text-blue-800">{insp.inspection_number}</span>
+                    <StatusBadge status={insp.status} />
+                    <span className="text-xs font-semibold px-2 py-0.5 bg-slate-100 rounded text-slate-700">
+                      {insp.inspection_mode}
+                    </span>
+                  </div>
+                  <span className="text-xs text-slate-500 font-mono">
+                    {formatDate(insp.scheduled_start_date)} — {formatDate(insp.scheduled_end_date)}
+                  </span>
+                </div>
+
+                {/* Panel Members */}
+                <div>
+                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Inspection Panel Members ({insp.panel_members.length})</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {insp.panel_members.map((pm) => (
+                      <div key={pm.id} className="p-3 bg-slate-50 rounded border border-slate-200 text-xs space-y-1">
+                        <div className="flex justify-between font-bold">
+                          <span>{pm.expert_name} ({pm.role})</span>
+                          <span className={pm.conflict_check_passed ? 'text-emerald-700 font-semibold' : 'text-rose-700 font-semibold'}>
+                            {pm.conflict_check_passed ? '✓ COI Cleared' : '✗ Conflict'}
+                          </span>
+                        </div>
+                        <div className="text-slate-600">{pm.expert_designation} — {pm.expert_organization}</div>
+                        {pm.conflict_notes && (
+                          <div className="text-amber-800 bg-amber-50 p-1.5 rounded text-[11px]">
+                            <strong>Exemption:</strong> {pm.conflict_notes}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-slate-500 flex justify-between pt-1">
+                          <span>Attendance: {pm.attendance_status}</span>
+                          <span>Sign-off: {pm.sign_off_status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Latest Report Verdict */}
+                {insp.latest_report && (
+                  <div className="p-4 bg-blue-50/60 rounded border border-blue-200 text-xs space-y-2">
+                    <div className="flex justify-between items-center font-bold">
+                      <span className="text-slate-800">
+                        EVC Report Version {insp.latest_report.version_number}:{' '}
+                        <span className={insp.latest_report.overall_recommendation === 'RECOMMENDED' ? 'text-emerald-700' : 'text-rose-700'}>
+                          {insp.latest_report.overall_recommendation}
+                        </span>{' '}
+                        (Score: {insp.latest_report.infrastructure_score}/100)
+                      </span>
+                      <StatusBadge status={insp.latest_report.review_status} />
+                    </div>
+                    <p className="text-slate-700">{insp.latest_report.observations}</p>
+                    <div className="font-mono text-[10px] text-slate-500">
+                      Payload SHA-256 Digest: {insp.latest_report.sha256_hash}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* TAB: STATUTORY DETERMINATION */}
+      {activeTab === 'decision' && (
+        <div className="space-y-4">
+          {appDecision ? (
+            <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm space-y-5">
+              <div className="flex justify-between items-start pb-4 border-b border-slate-200">
+                <div>
+                  <div className="flex items-center space-x-3">
+                    <h3 className="text-lg font-bold font-mono text-slate-900">{appDecision.decision_number}</h3>
+                    <StatusBadge status={appDecision.decision_type} />
+                    <span className="text-xs px-2 py-0.5 rounded bg-slate-100 font-semibold text-slate-700">
+                      AY {appDecision.academic_year}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Statutorily authorized by <strong>{appDecision.authorized_by_name}</strong> ({appDecision.authority_role}) on {formatDate(appDecision.authorized_at)}
+                  </p>
+                </div>
+                {appDecision.intake_approved && (
+                  <div className="text-right">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase block">Approved Intake</span>
+                    <span className="text-base font-bold text-blue-700">{appDecision.intake_approved} Seats</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Official Findings */}
+              <div className="space-y-1 text-xs">
+                <span className="font-bold text-slate-700 uppercase tracking-wider">Statutory Reasons & Grounding:</span>
+                <p className="p-3 bg-slate-50 rounded border border-slate-200 text-slate-800 leading-relaxed">
+                  {appDecision.reasons}
+                </p>
+              </div>
+
+              {/* Conditions */}
+              {appDecision.conditions && appDecision.conditions.length > 0 && (
+                <div className="space-y-2 text-xs">
+                  <span className="font-bold text-amber-800 uppercase tracking-wider">
+                    Mandatory Compliance Conditions ({appDecision.conditions.length}):
+                  </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {appDecision.conditions.map((cond) => (
+                      <div key={cond.id} className="p-3 bg-amber-50 border border-amber-200 rounded space-y-1">
+                        <div className="flex justify-between font-bold text-amber-900">
+                          <span>{cond.condition_code}</span>
+                          <span className="text-[11px] font-semibold text-amber-700">Due: {formatDate(cond.due_date)}</span>
+                        </div>
+                        <p className="text-amber-800 text-[11px]">{cond.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Human Attestation */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-900 space-y-1">
+                <div className="font-bold flex items-center">
+                  <ShieldCheck className="w-4 h-4 mr-1 text-blue-700" />
+                  Officer Non-Repudiation Attestation
+                </div>
+                <p className="text-[11px] italic leading-relaxed">{appDecision.declaration_text}</p>
+              </div>
+
+              {/* SHA-256 Digest */}
+              <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-500 font-mono gap-2">
+                <span>SHA-256 Attestation: {appDecision.sha256_attestation}</span>
+                <span className="text-slate-600 font-sans font-medium">Policy: {appDecision.governing_policy_version}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg border border-slate-200 p-8 text-center text-slate-500 text-xs space-y-3">
+              <Award className="w-8 h-8 text-slate-300 mx-auto" />
+              <p className="font-semibold text-slate-700 text-sm">No final statutory determination rendered yet</p>
+              <p className="max-w-md mx-auto">
+                Once document scrutiny and any applicable EVC inspections or committee hearings are concluded, authorized regional officers or council members issue the formal determination.
+              </p>
+              {isOfficer && (
+                <div className="pt-2">
+                  <Link
+                    to="/decisions"
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded text-xs font-semibold hover:bg-blue-700"
+                  >
+                    Open Statutory Decisions Desk →
+                  </Link>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}

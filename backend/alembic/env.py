@@ -26,9 +26,10 @@ target_metadata = Base.metadata
 
 def get_url():
     # Use sync URL for migrations
-    if settings.DATABASE_SYNC_URL:
+    if settings.DATABASE_SYNC_URL and not settings.DATABASE_SYNC_URL.startswith("sqlite"):
         return settings.DATABASE_SYNC_URL
-    return "sqlite:///./sentinel_dev.db"
+    root_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "sentinel_dev.db"))
+    return f"sqlite:///{root_db}"
 
 
 def run_migrations_offline() -> None:

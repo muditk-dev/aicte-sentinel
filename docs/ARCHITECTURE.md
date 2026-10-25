@@ -91,16 +91,37 @@ AICTE Sentinel is designed to replace fragmented, manual approval workflows with
 [EVC_SCHEDULED]
    │
    ▼
-[EVC_INSPECTION_CONDUCTED]
+[EVC_CONDUCTED]
    │
-   ├──► [RECOMMENDED_FOR_APPROVAL] ──► [REGIONAL_REVIEW] ──► [FINAL_APPROVAL]
-   │                                                                ▲
-   └──► [RECOMMENDED_FOR_HEARING] ──► [STANDING_HEARING_COMMITTEE]  │
-                                            │                       │
-                                            ├──► [APPROVED_ON_SHC] ─┘
-                                            │
-                                            └──► [REJECTED] ──► [APPELLATE_REVIEW]
+   ├──► [RECOMMENDED_APPROVAL] ────────► [AUTHORIZED_DECISION: APPROVED / CONDITIONAL]
+   │                                           ▲
+   └──► [STANDING_HEARING]                     │
+              │                                │
+              ├──► [RECOMMENDED_APPROVAL] ─────┘
+              │
+              └──► [REJECTED] ──► [APPELLATE_REVIEW] ──► [SAC_DETERMINATION]
 ```
+
+### 3.2 EVC Panel Allocation & Conflict-of-Interest Verification Engine
+1. **Multi-Vector Conflict Assessment:**
+   - **Direct Institution Affiliation:** Match against expert's declared current or prior appointments.
+   - **Mandatory Geographic Independence:** Match between expert's declared residential/working district and the target institution's district within the same state.
+   - **Alma Mater Independence:** Match against institution name or code matching expert's degree-granting alma mater.
+   - **Explicit Ethical Declarations:** Free-text and structured declarations on record.
+2. **Reviewer Exemption Workflow:**
+   - When a statutory conflict is flagged, assignment is blocked automatically.
+   - Regional Officers may only override when permitted by policy, requiring a mandatory documented justification recorded in the immutable audit trail.
+3. **Report Integrity & Non-Repudiation:**
+   - Inspection reports are versioned. Each submission computes a canonical SHA-256 payload digest.
+   - Subsequent changes require formal review and new version increment.
+
+### 3.3 Quorum-Governed Committee Adjudication & Decision Attestation
+1. **Standing Benches:**
+   - Standing Hearing Committees (SHC) and Standing Appellate Committees (SAC) enforce configurable statutory quorum before minutes and advisory recommendations can be recorded.
+2. **Authorized Final Decisions:**
+   - Consequential regulatory outcomes (`APPROVED`, `CONDITIONALLY_APPROVED`, `REJECTED`) require an authorized human officer with verified authority level.
+   - Immutability: Once issued, decisions cannot be edited; only formally reconsidered through an auditable SAC appellate petition.
+   - Non-repudiation: Computes a SHA-256 attestation digest over the decision payload and human oath text.
 
 Every transition requires:
 1. An authenticated actor with matching `Permission`.

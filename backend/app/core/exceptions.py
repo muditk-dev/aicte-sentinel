@@ -38,6 +38,16 @@ class ConflictError(SentinelException):
         super().__init__(message=message, code="STATE_CONFLICT", status_code=status.HTTP_409_CONFLICT, details=details)
 
 
+class ValidationError(SentinelException):
+    def __init__(self, message: str, details: Optional[Any] = None):
+        super().__init__(
+            message=message,
+            code="VALIDATION_ERROR",
+            status_code=422,
+            details=details,
+        )
+
+
 class WorkflowTransitionError(SentinelException):
     def __init__(self, from_state: str, to_state: str, reason: str):
         super().__init__(

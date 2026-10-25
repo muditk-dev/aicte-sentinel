@@ -10,6 +10,9 @@ import { InstitutionsPage } from '../pages/InstitutionsPage'
 import { WorkflowsPage } from '../pages/WorkflowsPage'
 import { AuditLedgerPage } from '../pages/AuditLedgerPage'
 import { DiagnosticsPage } from '../pages/DiagnosticsPage'
+import { EVCPage } from '../pages/EVCPage'
+import { CommitteesPage } from '../pages/CommitteesPage'
+import { DecisionsPage } from '../pages/DecisionsPage'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -46,6 +49,18 @@ export const router = createBrowserRouter([
       {
         path: 'applications/:id',
         element: <ApplicationDetailPage />,
+      },
+      {
+        path: 'evc',
+        element: <EVCPage />,
+      },
+      {
+        path: 'committees',
+        element: <CommitteesPage />,
+      },
+      {
+        path: 'decisions',
+        element: <DecisionsPage />,
       },
       {
         path: 'institutions',
