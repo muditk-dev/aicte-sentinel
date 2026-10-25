@@ -117,3 +117,101 @@ export interface AuditVerification {
   chain_head_hash?: string;
   verification_message: string;
 }
+
+export interface DocumentVersion {
+  id: string;
+  version_number: number;
+  storage_key: string;
+  sha256_hash: string;
+  file_size: number;
+  uploaded_by_user_id: string;
+  scan_status: string;
+  created_at: string;
+}
+
+export interface Document {
+  id: string;
+  application_id: string;
+  institution_id: string;
+  category: string;
+  original_filename: string;
+  storage_key: string;
+  mime_type: string;
+  file_size: number;
+  sha256_hash: string;
+  uploaded_by_user_id: string;
+  scan_status: 'QUARANTINED' | 'SCANNING' | 'ACCEPTED' | 'REJECTED';
+  scan_result_details?: string;
+  scan_timestamp?: string;
+  rejection_reason?: string;
+  verification_status: 'PENDING' | 'ACCEPTED' | 'DEFICIENT' | 'REQUIRES_MANUAL_VERIFICATION';
+  current_version: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  versions: DocumentVersion[];
+}
+
+export interface ScrutinyFinding {
+  id: string;
+  application_id: string;
+  document_id?: string;
+  category: string;
+  officer_id: string;
+  finding_status: 'ACCEPTED' | 'DEFICIENT' | 'REQUIRES_MANUAL_VERIFICATION';
+  reason: string;
+  notes?: string;
+  is_advisory_ai: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeficiencyItem {
+  id: string;
+  notice_id: string;
+  document_id?: string;
+  requirement_title: string;
+  description: string;
+  required_corrective_action: string;
+  item_status: string;
+  created_at: string;
+}
+
+export interface DeficiencyResponseModel {
+  id: string;
+  notice_id: string;
+  submitted_by_user_id: string;
+  response_remarks: string;
+  attachments_json: string;
+  created_at: string;
+}
+
+export interface DeficiencyNotice {
+  id: string;
+  notice_number: string;
+  application_id: string;
+  institution_id: string;
+  issuing_officer_id: string;
+  status: 'DRAFT' | 'ISSUED' | 'RESPONSE_SUBMITTED' | 'UNDER_REVIEW' | 'RESOLVED' | 'REOPENED';
+  due_date: string;
+  officer_remarks?: string;
+  issued_at?: string;
+  resolved_at?: string;
+  created_at: string;
+  updated_at: string;
+  items: DeficiencyItem[];
+  responses: DeficiencyResponseModel[];
+}
+
+export interface NotificationItem {
+  id: string;
+  user_id?: string;
+  institution_id?: string;
+  title: string;
+  message: string;
+  category: string;
+  link_url?: string;
+  is_read: boolean;
+  delivery_status: string;
+  created_at: string;
+}

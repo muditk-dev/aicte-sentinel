@@ -121,18 +121,17 @@ The seed command initializes deterministic test accounts across every statutory 
 ## 6. Automated Testing & Build Validation
 
 ### 6.1 Backend Test Suite (Pytest)
-Executes 10 comprehensive unit and integration tests against an isolated in-memory SQLite database, verifying auth tokens, tenant RLS isolation, guarded state machine transitions, and cryptographic audit hash validation:
+Executes 19 comprehensive unit and integration tests against an isolated in-memory SQLite database, verifying auth tokens, tenant RLS isolation, guarded state machine transitions, magic-byte file signature validation, ClamAV antivirus integration, quarantined download denial, scrutiny findings RBAC, deficiency notice lifecycle, deadline enforcement, and cryptographic audit hash validation:
 ```powershell
 .\.venv\Scripts\pytest -v backend/tests
 ```
-**Outcome:** `10 passed in ~7s`
+**Outcome:** `19 passed in ~12s (100% pass rate)`
 
 ### 6.2 Frontend Production Build (TypeScript + Vite)
 ```powershell
-cd frontend
-npm run build
+npm --prefix frontend run build
 ```
-**Outcome:** `Built in ~6s (0 TypeScript errors, production assets emitted in dist/)`
+**Outcome:** `Built in ~8s (0 TypeScript errors, production assets emitted in frontend/dist/)`
 
 ---
 
@@ -140,5 +139,17 @@ npm run build
 
 - **Liveness Probe:** `GET /api/health` — Confirms process availability and uptime.
 - **Readiness Probe:** `GET /api/ready` — Checks database connectivity and active dialect.
+- **Document Management:**
+  - `POST /api/v1/applications/{app_id}/documents` — Upload with magic-byte verification and antivirus quarantine scanning.
+  - `GET /api/v1/applications/{app_id}/documents` — List uploaded application documents.
+  - `GET /api/v1/documents/{doc_id}/download` — Authorized streaming download of clean vault documents (denies quarantined/rejected).
+- **Scrutiny Desk:**
+  - `GET /api/v1/applications/{app_id}/scrutiny` — List regulatory scrutiny findings.
+  - `POST /api/v1/applications/{app_id}/scrutiny` — Record scrutiny findings (Officer role required).
+- **Deficiencies & Institutional Clarifications:**
+  - `GET /api/v1/applications/{app_id}/deficiencies` — List formal statutory notices.
+  - `POST /api/v1/applications/{app_id}/deficiencies` — Issue deficiency notice with cure window.
+  - `POST /api/v1/deficiencies/{notice_id}/respond` — Submit institutional clarification.
+  - `POST /api/v1/deficiencies/{notice_id}/review` — Officer resolution or reopening.
 - **Cryptographic Audit Verifier:** `GET /api/v1/audit/verify` — Traverses the entire SHA-256 event chain from Genesis and validates that zero database modifications or deletions have occurred.
 - **OpenAPI Schema:** `GET /api/docs` or `GET /api/openapi.json`.

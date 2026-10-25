@@ -3,6 +3,7 @@ import json
 import uuid
 import sys
 import os
+from datetime import datetime, timedelta, timezone
 
 # Add backend directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend")))
@@ -15,9 +16,12 @@ from app.models.institution import Institution
 from app.models.user import User, Role, Permission
 from app.models.workflow import WorkflowTemplate, WorkflowVersion
 from app.models.application import Application, ApplicationEvent
+from app.models.document import Document, DocumentVersion, ScrutinyFinding
+from app.models.deficiency import DeficiencyNotice, DeficiencyItem, DeficiencyResponse, Notification
 from app.security.password import hash_password
 from app.workflows.engine import DEFAULT_STATE_MACHINE
 from app.audit.service import record_audit_event
+from app.storage.service import storage_service
 
 
 async def seed():
@@ -29,8 +33,11 @@ async def seed():
         stmt = select(User).where(User.email == settings.SEED_SUPERADMIN_EMAIL)
         existing_admin = (await db.execute(stmt)).scalar_one_or_none()
         if existing_admin:
-            print("Database already contains seed admin. Skipping seed generation.")
-            return
+            # Check if documents exist, if not seed documents & deficiencies
+            doc_check = (await db.execute(select(Document).limit(1))).scalar_one_or_none()
+            if doc_check:
+                print("Database already contains seed data and documents. Skipping seed.")
+                return
 
         print("Seeding statutory permissions and roles...")
         permissions_data = [
@@ -294,6 +301,178 @@ async def seed():
         db.add_all([ev1, ev2])
         await db.flush()
 
+        print("Seeding sample documents with physical files in vault...")
+        # Create sample PDF byte payloads
+        pdf_bytes = b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000052 00000 n \n0000000102 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n178\n%%EOF"
+        import hashlib
+        pdf_hash = hashlib.sha256(pdf_bytes).hexdigest()
+
+        key1 = f"app_{app1.id}/land_title_deed.pdf"
+        key2 = f"app_{app1.id}/building_occupancy.pdf"
+        key3 = f"app_{app1.id}/faculty_roster.pdf"
+
+        # Save to local vault
+        await storage_service.save_quarantine(key1, pdf_bytes)
+        await storage_service.move_to_vault(key1)
+
+        await storage_service.save_quarantine(key2, pdf_bytes)
+        await storage_service.move_to_vault(key2)
+
+        await storage_service.save_quarantine(key3, pdf_bytes)
+        await storage_service.move_to_vault(key3)
+
+        doc1 = Document(
+            application_id=app1.id,
+            institution_id=inst1.id,
+            category="Land Title & Conversion Certificate",
+            original_filename="Registered_Sale_Deed_Delhi_SubRegistrar.pdf",
+            storage_key=key1,
+            mime_type="application/pdf",
+            file_size=len(pdf_bytes),
+            sha256_hash=pdf_hash,
+            uploaded_by_user_id=users[4].id,
+            scan_status="ACCEPTED",
+            scan_result_details="ClamAV Verified: Clean payload",
+            scan_timestamp="2026-10-12T14:35:00Z",
+            verification_status="ACCEPTED",
+            current_version=1,
+            is_active=True,
+        )
+        doc2 = Document(
+            application_id=app1.id,
+            institution_id=inst1.id,
+            category="Building Plan & Occupancy Certificate",
+            original_filename="Municipal_Corporation_Delhi_Occupancy.pdf",
+            storage_key=key2,
+            mime_type="application/pdf",
+            file_size=len(pdf_bytes),
+            sha256_hash=pdf_hash,
+            uploaded_by_user_id=users[4].id,
+            scan_status="ACCEPTED",
+            scan_result_details="ClamAV Verified: Clean payload",
+            scan_timestamp="2026-10-12T14:36:00Z",
+            verification_status="ACCEPTED",
+            current_version=1,
+            is_active=True,
+        )
+        doc3 = Document(
+            application_id=app1.id,
+            institution_id=inst1.id,
+            category="Faculty Roster with Cadre Ratio",
+            original_filename="Faculty_List_AICTE_Format.pdf",
+            storage_key=key3,
+            mime_type="application/pdf",
+            file_size=len(pdf_bytes),
+            sha256_hash=pdf_hash,
+            uploaded_by_user_id=users[4].id,
+            scan_status="ACCEPTED",
+            scan_result_details="ClamAV Verified: Clean payload",
+            scan_timestamp="2026-10-12T14:37:00Z",
+            verification_status="DEFICIENT",
+            current_version=1,
+            is_active=True,
+        )
+        db.add_all([doc1, doc2, doc3])
+        await db.flush()
+
+        ver1 = DocumentVersion(
+            document_id=doc1.id,
+            version_number=1,
+            storage_key=key1,
+            sha256_hash=pdf_hash,
+            file_size=len(pdf_bytes),
+            uploaded_by_user_id=users[4].id,
+            scan_status="ACCEPTED",
+        )
+        ver2 = DocumentVersion(
+            document_id=doc2.id,
+            version_number=1,
+            storage_key=key2,
+            sha256_hash=pdf_hash,
+            file_size=len(pdf_bytes),
+            uploaded_by_user_id=users[4].id,
+            scan_status="ACCEPTED",
+        )
+        ver3 = DocumentVersion(
+            document_id=doc3.id,
+            version_number=1,
+            storage_key=key3,
+            sha256_hash=pdf_hash,
+            file_size=len(pdf_bytes),
+            uploaded_by_user_id=users[4].id,
+            scan_status="ACCEPTED",
+        )
+        db.add_all([ver1, ver2, ver3])
+        await db.flush()
+
+        print("Seeding scrutiny findings...")
+        finding1 = ScrutinyFinding(
+            application_id=app1.id,
+            document_id=doc1.id,
+            category=doc1.category,
+            officer_id=users[2].id,
+            finding_status="ACCEPTED",
+            reason="Verified against Sub-Registrar record. Land area 3.2 acres exceeds 2.5 acre norm.",
+            notes="No encumbrances found.",
+        )
+        finding2 = ScrutinyFinding(
+            application_id=app1.id,
+            document_id=doc3.id,
+            category=doc3.category,
+            officer_id=users[2].id,
+            finding_status="DEFICIENT",
+            reason="Cadre ratio for Professors is deficient in Electronics & VLSI branch.",
+            notes="Requires 2 Professors; only 1 Professor and 3 Associate Professors listed.",
+        )
+        db.add_all([finding1, finding2])
+        await db.flush()
+
+        print("Seeding formal statutory deficiency notice...")
+        now = datetime.now(timezone.utc)
+        notice1 = DeficiencyNotice(
+            notice_number="DEF-2026-0001",
+            application_id=app1.id,
+            institution_id=inst1.id,
+            issuing_officer_id=users[2].id,
+            status="ISSUED",
+            due_date=now + timedelta(days=7),
+            officer_remarks="The following statutory non-compliances were identified during scrutiny under APH 2026-27 Chapter I.",
+            issued_at=now - timedelta(days=2),
+        )
+        db.add(notice1)
+        await db.flush()
+
+        item1 = DeficiencyItem(
+            notice_id=notice1.id,
+            document_id=doc3.id,
+            requirement_title="Faculty Cadre Ratio Shortfall in ECE/VLSI",
+            description="Cadre ratio does not fulfill AICTE Norm 1:2:6 (Professor: Associate Professor: Assistant Professor).",
+            required_corrective_action="Submit appointment letter and joining report for 1 additional Professor with PhD in VLSI.",
+            item_status="PENDING",
+        )
+        item2 = DeficiencyItem(
+            notice_id=notice1.id,
+            document_id=None,
+            requirement_title="Specially-Abled Barrier-Free Accessibility Verification",
+            description="Ramp slope test certificate from chartered architect missing.",
+            required_corrective_action="Upload certificate confirming 1:12 slope ramp and dedicated lift accessibility.",
+            item_status="PENDING",
+        )
+        db.add_all([item1, item2])
+        await db.flush()
+
+        print("Seeding in-app notifications...")
+        notif1 = Notification(
+            institution_id=inst1.id,
+            title=f"Statutory Deficiency Notice Issued: {notice1.notice_number}",
+            message=f"Deficiencies flagged in application {app1.application_number}. Statutory cure deadline: {(now + timedelta(days=5)).strftime('%d-%b-%Y')}.",
+            category="DEFICIENCY_ISSUED",
+            link_url=f"/applications/{app1.id}",
+            is_read=False,
+            dedup_key=f"notice_issued_{notice1.id}",
+        )
+        db.add(notif1)
+
         print("Recording tamper-evident audit trail entries...")
         await record_audit_event(
             db=db,
@@ -313,11 +492,27 @@ async def seed():
         )
         await record_audit_event(
             db=db,
-            actor_id=users[1].id,
-            action="START_SCRUTINY",
-            resource_type="Application",
-            resource_id=app1.id,
-            details={"application_number": app1.application_number, "status": "UNDER_SCRUTINY"},
+            actor_id=users[4].id,
+            action="DOCUMENT_UPLOAD_AND_SCAN",
+            resource_type="Document",
+            resource_id=doc1.id,
+            details={"category": doc1.category, "scan_status": "ACCEPTED"},
+        )
+        await record_audit_event(
+            db=db,
+            actor_id=users[2].id,
+            action="RECORD_SCRUTINY_FINDING",
+            resource_type="ScrutinyFinding",
+            resource_id=finding1.id,
+            details={"category": doc1.category, "status": "ACCEPTED"},
+        )
+        await record_audit_event(
+            db=db,
+            actor_id=users[2].id,
+            action="ISSUE_DEFICIENCY_NOTICE",
+            resource_type="DeficiencyNotice",
+            resource_id=notice1.id,
+            details={"notice_number": notice1.notice_number},
         )
 
         await db.commit()

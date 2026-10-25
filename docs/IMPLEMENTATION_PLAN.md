@@ -59,17 +59,23 @@ AICTE Sentinel is a secure, role-based, end-to-end regulatory platform designed 
   - Modern React + TypeScript + Vite frontend with Tailwind CSS, government enterprise aesthetic (accessible, restrained, data-dense, responsive), and authenticated shell.
   - Automated backend tests (pytest) and frontend build verification.
 
-### Phase 2: Application Intake & Scrutiny Engine (M02, M04, M05)
-- **Prerequisites:** Phase 1 complete.
+### Phase 2: Application Intake & Scrutiny Engine (M04, M05)
+- **Status:** **COMPLETE (Milestone 2)**
 - **Deliverables:**
-  - Dynamic multi-part intake form builder based on selected workflow template (Engineering, Management, Pharmacy, Applied Arts).
-  - Secure object storage abstraction (MinIO / S3) with ClamAV antivirus scanning pipeline, MIME magic-byte verification, and content hash generation.
-  - Officer scrutiny interface: dual-pane view with document viewer alongside regulatory checklist items from APH.
-  - Three-tier deficiency workflow: Document Flagged $\rightarrow$ Formal Deficiency Notice Generated with statutory cure window (e.g., 7 days) $\rightarrow$ Institution Resubmission $\rightarrow$ Re-scrutiny.
-- **Acceptance Criteria:**
-  - Files infected with test EICAR strings rejected immediately.
-  - Officers can mark checklist items as Verified, Deficient, or Not Applicable with mandatory annotations.
-  - State machine prevents advancing an application with unresolved critical deficiencies.
+  - Secure object storage abstraction with quarantine and clean vault isolation (`app.storage.service`).
+  - Strict byte-level magic byte file signature verification (`%PDF-`, JPEG, PNG) preventing disguised uploads.
+  - Antivirus scanning pipeline with live ClamAV INSTREAM network client integration and EICAR malware detection.
+  - Document versioning and tamper-evident SHA-256 metadata persistence.
+  - Officer scrutiny workspace for document-level regulatory findings (`ACCEPTED`, `DEFICIENT`, `REQUIRES_MANUAL_VERIFICATION`).
+  - Formal statutory deficiency notice lifecycle (`DRAFT` $\rightarrow$ `ISSUED` $\rightarrow$ `RESPONSE_SUBMITTED` $\rightarrow$ `RESOLVED` / `REOPENED`).
+  - Mandatory statutory cure window deadline enforcement with idempotent periodic notification worker.
+  - Institutional clarification submission and replacement document linking.
+  - Scrutiny and deficiency tabs integrated into React application workspace.
+- **Verification Checks:**
+  - 19 automated tests passing in Pytest (100% pass rate).
+  - Clean TypeScript + Vite frontend production build.
+  - ClamAV & EICAR test signature rejection verified.
+  - Overdue deadline response lockout verified.
 
 ### Phase 3: Inspection, Panels & Committees (M06, M07)
 - **Prerequisites:** Phase 2 complete.
@@ -109,8 +115,8 @@ AICTE Sentinel is a secure, role-based, end-to-end regulatory platform designed 
 | **M01** | Identity, Institutions, RBAC & RLS | Phase 1 | **Implemented (Baseline)** | Auth endpoints, Password hash, Tenant models |
 | **M02** | Intake & Configurable Workflow Templates | Phase 1 | **Implemented (Baseline)** | Templates & version schema, Seed templates |
 | **M03** | Workflow State Transitions & History | Phase 1 | **Implemented (Baseline)** | Finite State transitions, Event log model |
-| **M04** | Document Management & Scrutiny | Phase 2 | Scheduled | MinIO abstraction, ClamAV client, Scrutiny API |
-| **M05** | Deficiency & Clarification Cycles | Phase 2 | Scheduled | Notice generation, Cure window timer |
+| **M04** | Document Management & Scrutiny | Phase 2 | **Implemented & Tested** | Quarantine/Vault, Magic bytes, ClamAV client, Scrutiny API |
+| **M05** | Deficiency & Clarification Cycles | Phase 2 | **Implemented & Tested** | Formal notice, Cure window timer, Clarification API |
 | **M06** | EVC Scheduling & Panel Assignment | Phase 3 | Scheduled | Expert pool, Conflict-of-interest rules |
 | **M07** | Committee & Decision Management | Phase 3 | Scheduled | SHC / SAC docketing, Human authorization gates |
 | **M08** | Post-Approval Obligations & Compliance | Phase 5 | Scheduled | Expiry tracking, Mandatory disclosure alerts |

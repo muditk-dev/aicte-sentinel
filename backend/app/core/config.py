@@ -54,12 +54,22 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # Storage
+    STORAGE_BACKEND: str = "local"  # "local" or "minio"
+    LOCAL_STORAGE_PATH: str = "./local_storage"
     STORAGE_ENDPOINT: str = "localhost:9000"
     STORAGE_ACCESS_KEY: str = "minioadmin"
     STORAGE_SECRET_KEY: str = "minioadmin"
     STORAGE_BUCKET_QUARANTINE: str = "aicte-quarantine"
     STORAGE_BUCKET_VAULT: str = "aicte-vault"
     STORAGE_USE_SSL: bool = False
+
+    # Upload Constraints
+    MAX_UPLOAD_SIZE_BYTES: int = 15 * 1024 * 1024  # 15 MB
+    ALLOWED_EXTENSIONS: List[str] = [".pdf", ".jpg", ".jpeg", ".png"]
+    ALLOWED_MIME_TYPES: List[str] = ["application/pdf", "image/jpeg", "image/png"]
+
+    # Statutory Cure Windows
+    DEFICIENCY_DEFAULT_CURE_DAYS: int = 7
 
     # ClamAV Antivirus
     CLAMAV_ENABLED: bool = False
