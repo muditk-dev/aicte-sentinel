@@ -17,6 +17,7 @@ from app.api.v1.decisions import router as decisions_router
 from app.api.v1.intelligence import router as intelligence_router
 from app.api.v1.ocr import router as ocr_router
 from app.api.v1.aph import router as aph_router
+from app.api.v1.compliance import router as compliance_router
 
 api_router = APIRouter()
 
@@ -40,4 +41,5 @@ api_router.include_router(decisions_router)
 api_router.include_router(intelligence_router)
 api_router.include_router(ocr_router)
 api_router.include_router(aph_router)
+api_router.include_router(compliance_router)
 api_router.include_router(audit_router)

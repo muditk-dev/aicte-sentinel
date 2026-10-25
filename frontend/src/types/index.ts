@@ -596,3 +596,171 @@ export interface APHQueryResponse {
   feedback_rating?: number;
   created_at: string;
 }
+
+// --- Phase 5: Post-Approval Compliance & Monitoring (M14, M15, M16) ---
+
+export interface ObligationEvidence {
+  id: string;
+  obligation_id: string;
+  document_id?: string;
+  title: string;
+  description?: string;
+  file_url?: string;
+  sha256_hash?: string;
+  uploaded_by_user_id: string;
+  submission_notes?: string;
+  created_at: string;
+}
+
+export interface ObligationReviewHistory {
+  id: string;
+  obligation_id: string;
+  actor_id: string;
+  actor_role: string;
+  action: string;
+  previous_status: string;
+  new_status: string;
+  comments?: string;
+  created_at: string;
+}
+
+export interface ComplianceEscalation {
+  id: string;
+  obligation_id: string;
+  institution_id: string;
+  escalation_level: number;
+  severity: 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  trigger_reason: string;
+  days_overdue: number;
+  notified_roles_json: string;
+  notification_id?: string;
+  is_resolved: boolean;
+  resolved_at?: string;
+  resolved_by_user_id?: string;
+  resolution_notes?: string;
+  created_at: string;
+}
+
+export interface ComplianceObligation {
+  id: string;
+  obligation_code: string;
+  institution_id: string;
+  institution_name?: string;
+  application_id?: string;
+  decision_id?: string;
+  title: string;
+  description: string;
+  category: string;
+  source_reference: string;
+  applicability: string;
+  assigned_officer_id?: string;
+  assigned_officer_name?: string;
+  issue_date: string;
+  due_date: string;
+  recurrence: 'ONE_TIME' | 'ANNUAL' | 'BIENNIAL' | 'QUARTERLY';
+  status: 'PENDING' | 'SUBMITTED' | 'UNDER_REVIEW' | 'COMPLIANT' | 'DEFICIENT' | 'OVERDUE' | 'CLOSED';
+  is_synthetic_demonstration: boolean;
+  is_automated_advisory: boolean;
+  closed_at?: string;
+  closed_by_user_id?: string;
+  created_at: string;
+  updated_at: string;
+  evidences?: ObligationEvidence[];
+  history?: ObligationReviewHistory[];
+}
+
+export interface CategoryBreakdownItem {
+  category: string;
+  total: number;
+  compliant: number;
+  pending: number;
+  deficient: number;
+  overdue: number;
+}
+
+export interface ComplianceSummaryReport {
+  total_obligations: number;
+  total_compliant: number;
+  total_pending: number;
+  total_under_review: number;
+  total_deficient: number;
+  total_overdue: number;
+  total_closed: number;
+  compliance_rate_percent: number;
+  categories_breakdown: CategoryBreakdownItem[];
+  active_escalations_count: number;
+  is_synthetic_demonstration: boolean;
+}
+
+export interface InstitutionComplianceReportItem {
+  institution_id: string;
+  institution_name: string;
+  institution_code: string;
+  region: string;
+  state: string;
+  total_obligations: number;
+  compliant_count: number;
+  pending_count: number;
+  overdue_count: number;
+  deficient_count: number;
+  compliance_percentage: number;
+  is_fully_compliant: boolean;
+}
+
+export interface ComplianceDeadlineItem {
+  id: string;
+  item_type: 'OBLIGATION' | 'CERTIFICATE_EXPIRY' | 'APPROVAL_EXPIRY';
+  title: string;
+  institution_id: string;
+  institution_name: string;
+  due_date: string;
+  days_remaining: number;
+  urgency_status: 'OVERDUE' | 'DUE_TODAY' | 'CRITICAL_7_DAYS' | 'APPROACHING_30_DAYS' | 'HEALTHY';
+  category: string;
+  reference_code: string;
+}
+
+export interface ComplianceDeficiencyReportItem {
+  obligation_id: string;
+  obligation_code: string;
+  title: string;
+  institution_id: string;
+  institution_name: string;
+  category: string;
+  source_reference: string;
+  due_date: string;
+  days_overdue: number;
+  last_review_comments?: string;
+  assigned_officer_name?: string;
+}
+
+export interface EvidenceSubmitPayload {
+  title: string;
+  description?: string;
+  document_id?: string;
+  file_url?: string;
+  sha256_hash?: string;
+  submission_notes?: string;
+}
+
+export interface OfficerReviewPayload {
+  decision: 'VERIFIED_COMPLIANT' | 'DEFICIENCY_FLAGGED' | 'CLOSED';
+  review_comments: string;
+  deficiency_cure_days?: number;
+}
+
+export interface ObligationCreatePayload {
+  institution_id: string;
+  application_id?: string;
+  decision_id?: string;
+  title: string;
+  description: string;
+  category: string;
+  source_reference: string;
+  applicability: string;
+  assigned_officer_id?: string;
+  issue_date: string;
+  due_date: string;
+  recurrence: string;
+  is_synthetic_demonstration?: boolean;
+}

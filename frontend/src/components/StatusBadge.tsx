@@ -63,6 +63,36 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = ''
           label: 'Application Rejected',
           classes: 'bg-rose-50 text-rose-800 border-rose-300 font-semibold',
         }
+      case 'COMPLIANT':
+        return {
+          label: 'Compliant & Verified',
+          classes: 'bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold',
+        }
+      case 'DEFICIENT':
+        return {
+          label: 'Deficiency Flagged',
+          classes: 'bg-amber-50 text-amber-800 border-amber-300 font-semibold',
+        }
+      case 'OVERDUE':
+        return {
+          label: 'Statutory Overdue',
+          classes: 'bg-red-50 text-red-800 border-red-300 font-semibold animate-pulse',
+        }
+      case 'PENDING':
+        return {
+          label: 'Pending Action',
+          classes: 'bg-slate-100 text-slate-700 border-slate-300',
+        }
+      case 'UNDER_REVIEW':
+        return {
+          label: 'Under Officer Review',
+          classes: 'bg-indigo-50 text-indigo-700 border-indigo-300',
+        }
+      case 'CLOSED':
+        return {
+          label: 'Obligation Closed',
+          classes: 'bg-slate-200 text-slate-800 border-slate-400 font-medium',
+        }
       default:
         return {
           label: st,

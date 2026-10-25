@@ -72,6 +72,21 @@ from app.schemas.aph import (
     APHQueryResponse,
     APHFeedbackRequest,
 )
+from app.schemas.compliance import (
+    EvidenceSubmitRequest,
+    ObligationEvidenceResponse,
+    ObligationReviewHistoryResponse,
+    ComplianceEscalationResponse,
+    ObligationCreateRequest,
+    ObligationUpdateRequest,
+    ObligationStatusTransitionRequest,
+    OfficerReviewRequest,
+    ComplianceObligationResponse,
+    ComplianceSummaryReportResponse,
+    InstitutionComplianceReportItem,
+    ComplianceDeadlineItemResponse,
+    ComplianceDeficiencyReportItem,
+)
 
 __all__ = [
     "LoginRequest",
@@ -142,4 +157,17 @@ __all__ = [
     "APHQueryRequest",
     "APHQueryResponse",
     "APHFeedbackRequest",
+    "EvidenceSubmitRequest",
+    "ObligationEvidenceResponse",
+    "ObligationReviewHistoryResponse",
+    "ComplianceEscalationResponse",
+    "ObligationCreateRequest",
+    "ObligationUpdateRequest",
+    "ObligationStatusTransitionRequest",
+    "OfficerReviewRequest",
+    "ComplianceObligationResponse",
+    "ComplianceSummaryReportResponse",
+    "InstitutionComplianceReportItem",
+    "ComplianceDeadlineItemResponse",
+    "ComplianceDeficiencyReportItem",
 ]

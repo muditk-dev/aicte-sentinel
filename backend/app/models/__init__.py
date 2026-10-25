@@ -13,6 +13,12 @@ from app.models.decision import StatutoryDecision, DecisionCondition
 from app.models.intelligence import ModelVersion, DelayRiskPrediction
 from app.models.ocr import OCRJob, OCRExtractedField
 from app.models.aph import APHSourceDocument, APHClause, APHAssistantQuery
+from app.models.compliance import (
+    ComplianceObligation,
+    ObligationEvidence,
+    ObligationReviewHistory,
+    ComplianceEscalation,
+)
 
 __all__ = [
     "Base",
@@ -55,4 +61,8 @@ __all__ = [
     "APHSourceDocument",
     "APHClause",
     "APHAssistantQuery",
+    "ComplianceObligation",
+    "ObligationEvidence",
+    "ObligationReviewHistory",
+    "ComplianceEscalation",
 ]

@@ -121,17 +121,17 @@ The seed command initializes deterministic test accounts across every statutory 
 ## 6. Automated Testing & Build Validation
 
 ### 6.1 Backend Test Suite (Pytest)
-Executes 33 comprehensive unit and integration tests against an isolated in-memory SQLite database, verifying auth tokens, tenant RLS isolation, guarded state machine transitions, magic-byte file signature validation, ClamAV antivirus integration, quarantined download denial, scrutiny findings RBAC, deficiency notice lifecycle, deadline enforcement, expert conflict-of-interest detection & blocking, documented reviewer overrides, scheduling conflict prevention, EVC report versioning & SHA-256 payload digests, committee quorum rules, statutory decision immutability with non-repudiation attestation, explainable delay-risk feature extraction & SHAP attribution, clean vault quarantine enforcement on OCR, OCR field verification/correction audit logging, and grounded APH clause citations with uncertainty safeguards:
+Executes 58 comprehensive unit, integration, and security tests against an isolated in-memory SQLite database, verifying auth tokens, tenant RLS isolation, guarded state machine transitions, magic-byte file signature validation, ClamAV antivirus integration, quarantined download denial, scrutiny findings RBAC, deficiency notice lifecycle, deadline enforcement, expert conflict-of-interest detection & blocking, documented reviewer overrides, scheduling conflict prevention, EVC report versioning & SHA-256 payload digests, committee quorum rules, statutory decision immutability with non-repudiation attestation, explainable delay-risk feature extraction & SHAP attribution, clean vault quarantine enforcement on OCR, OCR field verification/correction audit logging, grounded APH clause citations with uncertainty safeguards, post-approval obligation lifecycle states (`PENDING` -> `SUBMITTED` -> `UNDER_REVIEW` -> `COMPLIANT` / `DEFICIENT` / `OVERDUE` -> `CLOSED`), background monitoring worker execution with reminder deduplication (`dedup_key`), multi-tier statutory escalations (Level 1 to Regional Officers, Level 2 to Super Admin), compliance league table rankings, and streaming CSV export with OWASP spreadsheet formula injection neutralization:
 ```powershell
 .\.venv\Scripts\pytest -v backend/tests
 ```
-**Outcome:** `33 passed (100% pass rate in ~26s)`
+**Outcome:** `58 passed (100% pass rate in ~105s)`
 
 ### 6.2 Frontend Production Build (TypeScript + Vite)
 ```powershell
 npm --prefix frontend run build
 ```
-**Outcome:** `Built in ~5.5s (0 TypeScript errors, production assets emitted in frontend/dist/)`
+**Outcome:** `Built in ~12.5s (0 TypeScript errors, production assets emitted in frontend/dist/)`
 
 ---
 
@@ -184,5 +184,20 @@ npm --prefix frontend run build
   - `GET /api/v1/decisions` — List rendered statutory decisions (tenant-isolated).
   - `POST /api/v1/decisions` — Render legally consequential decision (Approved, Conditionally Approved, Rejected) with mandatory condition generator, human officer attestation, and SHA-256 non-repudiation digest.
   - `POST /api/v1/decisions/{id}/reconsider` — Docket for formal Standing Appellate Committee review.
+- **Post-Approval Compliance & Monitoring (M14, M15, M16):**
+  - `POST /api/v1/compliance/obligations` — Create post-approval obligation (officer role required).
+  - `GET /api/v1/compliance/obligations` — List obligations with multi-tenant filtering (status, category, recurrence, institution).
+  - `GET /api/v1/compliance/obligations/{id}` — Retrieve detailed obligation record and complete review history.
+  - `PUT /api/v1/compliance/obligations/{id}` — Update obligation title, due date, or assigned officer.
+  - `POST /api/v1/compliance/obligations/{id}/evidence` — Submit supporting compliance evidence and files (institution/officer).
+  - `POST /api/v1/compliance/obligations/{id}/review` — Formal regulatory officer review (`VERIFIED_COMPLIANT`, `DEFICIENCY_FLAGGED`, `CLOSED`).
+  - `POST /api/v1/compliance/worker/trigger` — Trigger scheduled deadline monitoring and multi-tier escalation evaluation worker.
+  - `GET /api/v1/compliance/escalations` — List statutory escalations (Level 1 and Level 2) with resolution tracking.
+  - `PUT /api/v1/compliance/escalations/{id}/resolve` — Mark statutory escalation resolved with audit logging.
+  - `GET /api/v1/compliance/reports/summary` — Aggregate compliance KPIs (compliance rate, open deficiencies, overdue count).
+  - `GET /api/v1/compliance/reports/institutions` — Institution Compliance League Table ranking by verified rate.
+  - `GET /api/v1/compliance/reports/deadlines` — Calendar feed of renewal, expiry, and obligation deadlines.
+  - `GET /api/v1/compliance/reports/deficiencies` — Outstanding statutory compliance deficiencies queue.
+  - `GET /api/v1/compliance/reports/export/csv` — Secure streaming CSV export with OWASP spreadsheet formula injection protection.
 - **Cryptographic Audit Verifier:** `GET /api/v1/audit/verify` — Traverses the entire SHA-256 event chain from Genesis and validates that zero database modifications or deletions have occurred.
 - **OpenAPI Schema:** `GET /api/docs` or `GET /api/openapi.json`.

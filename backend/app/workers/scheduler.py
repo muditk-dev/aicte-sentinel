@@ -4,6 +4,7 @@ from sqlalchemy import select, and_
 from app.core.database import AsyncSessionLocal
 from app.core.logging import logger
 from app.models.deficiency import DeficiencyNotice, Notification
+from app.workers.compliance_worker import evaluate_compliance_deadlines_and_escalations
 
 
 async def evaluate_deficiency_deadlines(db: AsyncSessionLocal = None):
@@ -83,6 +84,7 @@ async def run_periodic_tasks():
     while True:
         try:
             await evaluate_deficiency_deadlines()
+            await evaluate_compliance_deadlines_and_escalations()
             await asyncio.sleep(60)
         except asyncio.CancelledError:
             logger.info("Worker received cancellation signal.")

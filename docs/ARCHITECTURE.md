@@ -187,3 +187,63 @@ Every transition requires:
 1. **Authoritative Corpus:** Indexed AICTE Approval Process Handbook (APH 2026-27) divided into chapters, clauses, and norm categories.
 2. **Hybrid Lexical & Semantic Retrieval:** Combines BM25 scoring with vector similarity, ensuring zero external vendor lock-in.
 3. **Mandatory Citations & Uncertainty Safeguard:** Every answer includes exact chapter, clause, page, and excerpt citations. If query exceeds indexed corpus coverage, the assistant emits an explicit uncertainty warning rather than hallucinating regulatory rules.
+
+---
+
+## 7. Post-Approval Compliance & Continuous Monitoring (Phase 5)
+
+```
+                            ┌────────────────────────────────────────────────────────┐
+                            │      POST-APPROVAL COMPLIANCE & CONTINUOUS OVERSIGHT   │
+                            └───────────────────────────┬────────────────────────────┘
+                                                        │
+                      ┌─────────────────────────────────┼────────────────────────────────┐
+                      ▼                                 ▼                                ▼
+       ┌─────────────────────────────┐   ┌─────────────────────────────┐  ┌─────────────────────────────┐
+       │   M14: OBLIGATION LIFECYCLE │   │   M15: WORKER & ESCALATION  │  │   M16: AUDIT & EXPORT DESK  │
+       │ - Statutory Categorization  │   │ - Multi-Stage Reminders     │  │ - League Table & KPIs       │
+       │ - Evidence Submission Vault │   │ - Automated OVERDUE Shift   │  │ - Calendar Aggregation      │
+       │ - Human Officer Review Desk │   │ - Tier-1 / Tier-2 Routing   │  │ - OWASP CSV Neutralization  │
+       │ - Strict RBAC & Tenant Iso  │   │ - Idempotent dedup_key      │  │ - Chained SHA-256 Ledger    │
+       └─────────────────────────────┘   └─────────────────────────────┘  └─────────────────────────────┘
+```
+
+### 7.1 M14: Post-Approval Obligations & Statutory Verification
+1. **Statutory Obligation Association:** Compliance obligations are persistently anchored to institutions, statutory applications, and authorized decisions (`APPROVED` or `CONDITIONALLY_APPROVED`).
+2. **State Machine Integrity:**
+   - Permitted states: `PENDING`, `SUBMITTED`, `UNDER_REVIEW`, `COMPLIANT`, `DEFICIENT`, `OVERDUE`, `CLOSED`.
+   - Forward progress requires explicit institutional evidence or officer adjudication.
+   - Terminal closure (`CLOSED`) requires authorized human officer sign-off; automated systems or AI predictions cannot mark obligations closed or verified.
+3. **Multi-Tenant Isolation & Role Scoping:**
+   - Institution users can only view their own obligations and submit supporting evidence.
+   - Regulatory officers (`SCRUTINY_OFFICER`, `REGIONAL_OFFICER`, `SUPER_ADMIN`) possess authorized desks to review evidence, mark deficiencies, verify compliance, or issue closure.
+4. **Immutable Evidence & Review History:**
+   - Every status shift creates an `ObligationReviewHistory` record capturing actor identity, previous state, new state, and regulatory remarks.
+   - Cryptographically linked to the SHA-256 chained audit ledger.
+
+### 7.2 M15: Renewal, Expiry, Reminders & Multi-Tier Escalations
+1. **Background Monitoring Worker:**
+   - `evaluate_compliance_deadlines_and_escalations` runs on scheduled intervals.
+   - Analyzes remaining days to due date against active obligations (`PENDING`, `SUBMITTED`, `UNDER_REVIEW`, `DEFICIENT`).
+2. **Automated Reminders:**
+   - Emits statutory alerts at milestones: 30 days, 15 days, 7 days, and 1 day remaining.
+   - Dispatched via verified `IN_APP_DELIVERED` notification channel.
+3. **Automated Overdue Transition:**
+   - Any unfulfilled obligation whose `due_date < now()` is automatically transitioned to `OVERDUE`.
+4. **Multi-Tier Statutory Escalations:**
+   - **Level 1 Escalation (>7 days overdue):** Dispatched to Regional Officers and Institution Leads with urgent notice.
+   - **Level 2 Escalation (>14 days overdue):** Escalated to Super Administrators and Central AICTE Council for regulatory sanction or show-cause consideration.
+5. **Worker Idempotency & Deduplication:**
+   - Notifications and escalations utilize unique deterministic deduplication keys (`dedup_key = "OBL-REMINDER-{ob_id}-{bucket}-{cycle_date}"`).
+   - Prevents duplicate alerts on multiple worker executions.
+
+### 7.3 M16: Compliance Intelligence, League Tables & Secure Export
+1. **Aggregated Regulatory Metrics:**
+   - Real-time computation of on-time compliance percentages, open deficiencies, overdue rates, and escalation queues.
+2. **Institution Compliance Ranking:**
+   - Computes compliance scores per institution based on on-time verification, active obligations, and defect history.
+3. **OWASP Spreadsheet Formula Injection Protection:**
+   - CSV export endpoints stream data safely to spreadsheet viewers.
+   - Neutralizes formula injection attack vectors (DDE code execution, external hyperlinking) by checking every cell for leading `=, +, -, @, \t, \r` and prepending a single quote (`'`).
+4. **Synthetic Demonstration Integrity:**
+   - All seeded demonstration records carry explicit `is_synthetic_demonstration: True` metadata, preventing synthetic test data from corrupting official regulatory statistics.

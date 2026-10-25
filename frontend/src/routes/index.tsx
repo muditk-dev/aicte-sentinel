@@ -15,6 +15,12 @@ import { CommitteesPage } from '../pages/CommitteesPage'
 import { DecisionsPage } from '../pages/DecisionsPage'
 import { RiskIntelligencePage } from '../pages/RiskIntelligencePage'
 import { APHAssistantPage } from '../pages/APHAssistantPage'
+import { ComplianceOverviewPage } from '../pages/ComplianceOverviewPage'
+import { ObligationsRegisterPage } from '../pages/ObligationsRegisterPage'
+import { ObligationDetailPage } from '../pages/ObligationDetailPage'
+import { RenewalExpiryCalendarPage } from '../pages/RenewalExpiryCalendarPage'
+import { NotificationsEscalationsPage } from '../pages/NotificationsEscalationsPage'
+import { ComplianceReportsPage } from '../pages/ComplianceReportsPage'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -71,6 +77,30 @@ export const router = createBrowserRouter([
       {
         path: 'decisions',
         element: <DecisionsPage />,
+      },
+      {
+        path: 'compliance',
+        element: <ComplianceOverviewPage />,
+      },
+      {
+        path: 'compliance/obligations',
+        element: <ObligationsRegisterPage />,
+      },
+      {
+        path: 'compliance/obligations/:id',
+        element: <ObligationDetailPage />,
+      },
+      {
+        path: 'compliance/calendar',
+        element: <RenewalExpiryCalendarPage />,
+      },
+      {
+        path: 'compliance/escalations',
+        element: <NotificationsEscalationsPage />,
+      },
+      {
+        path: 'compliance/reports',
+        element: <ComplianceReportsPage />,
       },
       {
         path: 'institutions',

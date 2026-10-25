@@ -12,6 +12,7 @@ import {
   Award,
   BrainCircuit,
   BookOpen,
+  ClipboardCheck,
 } from 'lucide-react'
 
 export const Sidebar: React.FC = () => {
@@ -23,6 +24,7 @@ export const Sidebar: React.FC = () => {
     { name: 'EVC Inspections & Pool', path: '/evc', icon: Users },
     { name: 'Committees & Hearings', path: '/committees', icon: Scale },
     { name: 'Statutory Decisions', path: '/decisions', icon: Award },
+    { name: 'Compliance & Monitoring', path: '/compliance', icon: ClipboardCheck },
     { name: 'Institution Registry', path: '/institutions', icon: Building },
     { name: 'Workflow Engine', path: '/workflows', icon: GitBranch },
     { name: 'Audit Hash-Chain Ledger', path: '/audit', icon: ShieldCheck },

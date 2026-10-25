@@ -45,6 +45,10 @@ from app.models import (
     APHSourceDocument,
     APHClause,
     APHAssistantQuery,
+    ComplianceObligation,
+    ObligationEvidence,
+    ObligationReviewHistory,
+    ComplianceEscalation,
 )
 from app.workflows.engine import DEFAULT_STATE_MACHINE
 from app.security.password import hash_password
@@ -204,6 +208,177 @@ async def seed_phase4_data(db):
     await db.commit()
 
 
+async def seed_phase5_data(db):
+    print("Seeding Post-Approval Compliance Obligations & Monitoring Records (Phase 5: M14-M16)...")
+    ob_check = (await db.execute(select(ComplianceObligation).limit(1))).scalar_one_or_none()
+    if ob_check:
+        print("Compliance obligations already present. Skipping.")
+        return
+
+    # Find an institution and approved decision/application
+    inst = (await db.execute(select(Institution).limit(1))).scalar_one_or_none()
+    app = (await db.execute(select(Application).where(Application.institution_id == inst.id).limit(1))).scalar_one_or_none() if inst else None
+    decision = (await db.execute(select(StatutoryDecision).limit(1))).scalar_one_or_none()
+    admin_user = (await db.execute(select(User).where(User.email == settings.SEED_SUPERADMIN_EMAIL))).scalar_one_or_none()
+    scrutiny_user = (await db.execute(select(User).where(User.email == "scrutiny.officer@aicte.gov.in"))).scalar_one_or_none()
+    inst_user = (await db.execute(select(User).where(User.institution_id == inst.id).limit(1))).scalar_one_or_none() if inst else None
+
+    if not inst or not admin_user:
+        print("Institution or admin not found, skipping Phase 5 seed.")
+        return
+
+    now = datetime.now(timezone.utc)
+
+    # 1. Compliant Obligation: Faculty-Student Ratio Mandatory Disclosure
+    ob1 = ComplianceObligation(
+        obligation_code="OBL-DEMO-FSR-2026",
+        institution_id=inst.id,
+        application_id=app.id if app else None,
+        decision_id=decision.id if decision else None,
+        title="Annual Faculty-Student Ratio (FSR) Mandatory Compliance Disclosure",
+        description="Statutory submission of audited faculty muster roll, teacher-student ratios (1:15 for UG Engineering), and Aadhaar-based biometric attendance logs under AICTE Gazette.",
+        category="FACULTY_RATIO",
+        source_reference="APH 2026-27 Clause 4.1.1",
+        applicability="ALL_TECHNICAL_INSTITUTIONS",
+        assigned_officer_id=scrutiny_user.id if scrutiny_user else admin_user.id,
+        issue_date=now - timedelta(days=60),
+        due_date=now - timedelta(days=15),
+        recurrence="ANNUAL",
+        status="COMPLIANT",
+        is_synthetic_demonstration=True,
+        is_automated_advisory=False,
+    )
+    db.add(ob1)
+    await db.flush()
+
+    # Evidence for ob1
+    ev1 = ObligationEvidence(
+        obligation_id=ob1.id,
+        title="Audited Faculty Cadre & Pay Roll Register AY 2026-27",
+        description="Chartered Accountant certified faculty roster verifying 1:15 FSR across 4 approved branches.",
+        file_url="/vault/compliance/fsr_audit_2026.pdf",
+        sha256_hash="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        uploaded_by_user_id=inst_user.id if inst_user else admin_user.id,
+        submission_notes="Uploaded with CA signature and biometric attendance verification.",
+    )
+    db.add(ev1)
+
+    hist1 = ObligationReviewHistory(
+        obligation_id=ob1.id,
+        actor_id=scrutiny_user.id if scrutiny_user else admin_user.id,
+        actor_role="SCRUTINY_OFFICER",
+        action="VERIFIED_COMPLIANT",
+        previous_status="SUBMITTED",
+        new_status="COMPLIANT",
+        comments="Verified against University affiliation portal and AICTE faculty database. Compliant with 1:15 norm.",
+    )
+    db.add(hist1)
+
+    # 2. Pending Obligation: Fire Safety NOC Renewal
+    ob2 = ComplianceObligation(
+        obligation_code="OBL-DEMO-FIRE-2026",
+        institution_id=inst.id,
+        application_id=app.id if app else None,
+        decision_id=decision.id if decision else None,
+        title="Fire and Life Safety Certificate (Fire NOC) Annual Re-Validation",
+        description="Submission of authentic, unexpired Fire NOC issued by State Fire & Emergency Services covering all academic blocks exceeding 15m with sprinkler clearances.",
+        category="SAFETY_CLEARANCE",
+        source_reference="APH 2026-27 Clause 1.7.3",
+        applicability="ALL_TECHNICAL_INSTITUTIONS",
+        assigned_officer_id=scrutiny_user.id if scrutiny_user else admin_user.id,
+        issue_date=now - timedelta(days=20),
+        due_date=now + timedelta(days=25),
+        recurrence="ANNUAL",
+        status="PENDING",
+        is_synthetic_demonstration=True,
+        is_automated_advisory=False,
+    )
+    db.add(ob2)
+
+    # 3. Deficient Obligation: Anti-Ragging Committee Statutory Affidavit
+    ob3 = ComplianceObligation(
+        obligation_code="OBL-DEMO-RAGGING-2026",
+        institution_id=inst.id,
+        application_id=app.id if app else None,
+        decision_id=decision.id if decision else None,
+        title="Anti-Ragging Committee & Squad Constitution Gazette Affidavit",
+        description="Constitution of institutional Anti-Ragging Committee with civil and police administration representatives, including student toll-free helpline logs.",
+        category="GENERAL",
+        source_reference="APH 2026-27 Clause 2.1.4",
+        applicability="ALL_TECHNICAL_INSTITUTIONS",
+        assigned_officer_id=scrutiny_user.id if scrutiny_user else admin_user.id,
+        issue_date=now - timedelta(days=30),
+        due_date=now + timedelta(days=5),
+        recurrence="ANNUAL",
+        status="DEFICIENT",
+        is_synthetic_demonstration=True,
+        is_automated_advisory=False,
+    )
+    db.add(ob3)
+    await db.flush()
+
+    hist3 = ObligationReviewHistory(
+        obligation_id=ob3.id,
+        actor_id=scrutiny_user.id if scrutiny_user else admin_user.id,
+        actor_role="SCRUTINY_OFFICER",
+        action="DEFICIENCY_FLAGGED",
+        previous_status="SUBMITTED",
+        new_status="DEFICIENT",
+        comments="Submitted affidavit missing local Police Station Station-House-Officer (SHO) counter-signature. Please cure within 14 calendar days.",
+    )
+    db.add(hist3)
+
+    # 4. Overdue Obligation & Escalation: Joint Fixed Deposit Receipt Maintenance
+    ob4 = ComplianceObligation(
+        obligation_code="OBL-DEMO-ENDOW-2026",
+        institution_id=inst.id,
+        application_id=app.id if app else None,
+        decision_id=decision.id if decision else None,
+        title="Joint Fixed Deposit Receipt (FDR) / Endowment Fund Maintenance Certificate",
+        description="Proof of continuous maintenance of Rs. 100 Lakhs Joint Fixed Deposit in Nationalized Bank in the joint name of Regional Officer AICTE and Institution Trust.",
+        category="FINANCIAL_DISCLOSURE",
+        source_reference="APH 2026-27 Clause 5.3.2",
+        applicability="ALL_TECHNICAL_INSTITUTIONS",
+        assigned_officer_id=scrutiny_user.id if scrutiny_user else admin_user.id,
+        issue_date=now - timedelta(days=45),
+        due_date=now - timedelta(days=10),
+        recurrence="BIENNIAL",
+        status="OVERDUE",
+        is_synthetic_demonstration=True,
+        is_automated_advisory=False,
+    )
+    db.add(ob4)
+    await db.flush()
+
+    # Escalation Level 1 for ob4
+    esc4 = ComplianceEscalation(
+        obligation_id=ob4.id,
+        institution_id=inst.id,
+        escalation_level=1,
+        severity="HIGH",
+        trigger_reason="OVERDUE_7_DAYS",
+        days_overdue=10,
+        notified_roles_json=json.dumps(["REGIONAL_OFFICER", "SCRUTINY_OFFICER"]),
+        is_resolved=False,
+    )
+    db.add(esc4)
+
+    notif_overdue = Notification(
+        institution_id=inst.id,
+        title=f"HIGH ESCALATION (Level 1): Obligation {ob4.obligation_code} Overdue 10 Days",
+        message="Compliance obligation 'Joint Fixed Deposit Receipt (FDR)' is overdue by 10 days. Show-cause notice issued under APH norms.",
+        category="ESCALATION_LEVEL_1",
+        link_url=f"/compliance/obligations/{ob4.id}",
+        is_read=False,
+        delivery_status="IN_APP_DELIVERED",
+        dedup_key=f"esc_level1_{ob4.id}_{ob4.due_date.date()}",
+    )
+    db.add(notif_overdue)
+
+    await db.commit()
+    print("Post-approval compliance obligations seeded successfully!")
+
+
 async def seed():
     print("Initiating AICTE Sentinel comprehensive statutory seed sequence...")
 
@@ -218,12 +393,20 @@ async def seed():
             if exp_check:
                 aph_check = (await db.execute(select(APHSourceDocument).limit(1))).scalar_one_or_none()
                 if aph_check:
-                    print("Database already contains seed data, experts, statutory decisions, and intelligence records. Skipping seed.")
-                    return
+                    compl_check = (await db.execute(select(ComplianceObligation).limit(1))).scalar_one_or_none()
+                    if compl_check:
+                        print("Database already contains seed data, experts, statutory decisions, intelligence, and compliance records. Skipping seed.")
+                        return
+                    else:
+                        print("Augmenting database with Phase 5 Post-Approval Compliance & Monitoring...")
+                        await seed_phase5_data(db)
+                        print("Phase 5 compliance augmentations seeded successfully!")
+                        return
                 else:
                     print("Previous milestones present. Augmenting database with Phase 4 Intelligence, OCR & APH...")
                     await seed_phase4_data(db)
-                    print("Phase 4 intelligence augmentations seeded successfully!")
+                    await seed_phase5_data(db)
+                    print("Phase 4 & 5 augmentations seeded successfully!")
                     return
 
         print("Seeding statutory permissions and roles...")
