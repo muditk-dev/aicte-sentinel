@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     API_PREFIX: str = "/api/v1"
 
     # CORS
-    CORS_ORIGINS: List[str] = [
+    CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
@@ -31,15 +31,22 @@ class Settings(BaseSettings):
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",") if i.strip()]
-        elif isinstance(v, str) and v.startswith("["):
-            import json
-            try:
-                return json.loads(v)
-            except Exception:
-                return ["http://localhost:5173"]
-        return v
+        if isinstance(v, str):
+            cleaned = v.strip()
+            if not cleaned:
+                return []
+            if cleaned.startswith("["):
+                import json
+                try:
+                    parsed = json.loads(cleaned)
+                    if isinstance(parsed, list):
+                        return [str(i).strip().rstrip("/") for i in parsed if str(i).strip()]
+                except Exception:
+                    pass
+            return [i.strip().rstrip("/") for i in cleaned.split(",") if i.strip()]
+        elif isinstance(v, list):
+            return [str(i).strip().rstrip("/") for i in v if str(i).strip()]
+        return []
 
     # Security & JWT
     SECRET_KEY: str = "sentinel-local-dev-secret-key-at-least-32-chars-long"
