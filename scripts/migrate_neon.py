@@ -64,7 +64,13 @@ def run_neon_migration(database_url: str = None):
 
     host = (parsed.host or "").lower()
     if host in ("localhost", "127.0.0.1", "0.0.0.0"):
-        print("[WARNING] Target is localhost. Ensure this is intentional.")
+        print("[ERROR] Safety Violation: Target is localhost. Expected remote Neon host.")
+        sys.exit(1)
+
+    if not host.endswith(".neon.tech"):
+        print(f"[WARNING] Target host '{parsed.host}' does not end in '.neon.tech'.")
+    else:
+        print("[*] Target Verification: Verified Neon Cloud Endpoint (*.neon.tech)")
 
     print(f"[*] Target Driver:   {parsed.drivername}")
     print(f"[*] Target Host:     {parsed.host}")
