@@ -46,6 +46,8 @@ yarn-debug.log*
 yarn-error.log*
 frontend/dist/
 frontend/.vite/
+.vercel/
+frontend/.vercel/
 *.tsbuildinfo
 
 # Environment and secrets
@@ -67,3 +69,5 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+.vercel
