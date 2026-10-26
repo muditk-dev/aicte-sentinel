@@ -19,7 +19,7 @@ def mask_connection_url(raw_url: str) -> str:
     """Returns a safe representation of the URL with password masked."""
     try:
         url = make_url(raw_url)
-        return f"{url.drivername}://{url.username}:****@{url.host}:{url.port or 5432}/{url.database}?{url.query.get('sslmode', 'require')}"
+        return f"{url.drivername}://{url.username}:****@{url.host}:{url.port or 5432}/{url.database}"
     except Exception:
         # Fallback regex masking
         return re.sub(r":([^@]+)@", ":****@", raw_url)

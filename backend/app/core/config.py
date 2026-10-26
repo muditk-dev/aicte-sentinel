@@ -1,5 +1,6 @@
 import os
 import re
+from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
 from typing import List, Union, Optional
 from pydantic import AnyHttpUrl, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -117,9 +118,35 @@ class Settings(BaseSettings):
         elif normalized_async.startswith("sqlite://") and not normalized_async.startswith("sqlite+aiosqlite://"):
             normalized_async = "sqlite+aiosqlite:///" + normalized_async[len("sqlite:///"):].lstrip("/")
 
-        # asyncpg requires 'ssl=' instead of 'sslmode=' in connection query parameters
+        # asyncpg requires 'ssl=' instead of 'sslmode=' and rejects unsupported libpq params like 'channel_binding'
         if "postgresql+asyncpg://" in normalized_async:
-            normalized_async = re.sub(r'([?&])sslmode=([a-zA-Z0-9_-]+)', r'\1ssl=\2', normalized_async)
+            parsed = urlparse(normalized_async)
+            query_params = parse_qsl(parsed.query, keep_blank_values=True)
+            clean_params = []
+            has_ssl = False
+            for k, v in query_params:
+                if k == "sslmode":
+                    clean_params.append(("ssl", v))
+                    has_ssl = True
+                elif k == "ssl":
+                    clean_params.append((k, v))
+                    has_ssl = True
+                elif k in ("channel_binding", "gssencmode", "target_session_attrs"):
+                    # asyncpg connect() does not accept these libpq query params
+                    continue
+                else:
+                    clean_params.append((k, v))
+            if not has_ssl and "neon.tech" in parsed.netloc:
+                clean_params.append(("ssl", "require"))
+            new_query = urlencode(clean_params)
+            normalized_async = urlunparse((
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                new_query,
+                parsed.fragment
+            ))
 
         self.DATABASE_URL = normalized_async
 

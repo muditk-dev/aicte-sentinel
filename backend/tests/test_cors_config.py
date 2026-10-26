@@ -108,3 +108,19 @@ async def test_cors_middleware_rejects_disallowed_origin():
         )
         assert response.status_code == 200
         assert "access-control-allow-origin" not in response.headers
+
+
+def test_neon_database_url_normalizes_channel_binding(monkeypatch):
+    """Verifies that Neon connection strings with channel_binding are safely normalized for asyncpg."""
+    neon_url = "postgresql://user:pass@ep-sample-123.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    monkeypatch.setenv("DATABASE_URL", neon_url)
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    
+    settings = Settings()
+    assert settings.DATABASE_URL.startswith("postgresql+asyncpg://")
+    assert "ssl=require" in settings.DATABASE_URL
+    assert "channel_binding" not in settings.DATABASE_URL
+    assert "sslmode" not in settings.DATABASE_URL
+    # Also verify sync migration URL
+    assert settings.DATABASE_SYNC_URL.startswith("postgresql+psycopg2://")
+    assert "sslmode=require" in settings.DATABASE_SYNC_URL
