@@ -46,6 +46,7 @@ yarn-debug.log*
 yarn-error.log*
 frontend/dist/
 frontend/.vite/
+*.tsbuildinfo
 
 # Environment and secrets
 .env

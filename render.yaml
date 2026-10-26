@@ -1,0 +1,58 @@
+# ===================================================================
+# AICTE Sentinel — Render Production Blueprint Specification
+# Problem Statement 26262 | Smart India Hackathon (SIH) 2026
+# ===================================================================
+
+services:
+  # -----------------------------------------------------------------
+  # 1. FastAPI Production API Backend
+  # -----------------------------------------------------------------
+  - type: web
+    name: aicte-sentinel-backend
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --app-dir backend
+    plan: free
+    region: oregon
+    healthCheckPath: /api/health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: APP_NAME
+        value: "AICTE Sentinel"
+      - key: APP_VERSION
+        value: "1.0.0"
+      - key: API_PREFIX
+        value: /api/v1
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+      - key: USE_SQLITE_FALLBACK
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aicte-sentinel-postgres
+          property: connectionString
+      - key: DATABASE_SYNC_URL
+        fromDatabase:
+          name: aicte-sentinel-postgres
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: "https://*.vercel.app,http://localhost:5173"
+
+databases:
+  # -----------------------------------------------------------------
+  # 2. Managed PostgreSQL Instance (Production Domain DB)
+  # -----------------------------------------------------------------
+  - name: aicte-sentinel-postgres
+    databaseName: aicte_sentinel
+    user: sentinel_user
+    plan: free
+    region: oregon
