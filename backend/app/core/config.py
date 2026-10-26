@@ -1,6 +1,7 @@
 import os
-from typing import List, Union
-from pydantic import AnyHttpUrl, field_validator
+import re
+from typing import List, Union, Optional
+from pydantic import AnyHttpUrl, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,13 +24,15 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
+        "https://aicte-sentinel-theta.vercel.app",
     ]
+    CORS_ORIGIN_REGEX: Optional[str] = r"^https:\/\/.*\.vercel\.app$"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
         if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
+            return [i.strip() for i in v.split(",") if i.strip()]
         elif isinstance(v, str) and v.startswith("["):
             import json
             try:
@@ -84,6 +87,57 @@ class Settings(BaseSettings):
     SEED_SUPERADMIN_EMAIL: str = "superadmin@aicte-india.org"
     SEED_SUPERADMIN_PASSWORD: str = "Sentinel@Admin2026!"
     SEED_SYNTHETIC_DATA: bool = True
+
+    @model_validator(mode="after")
+    def validate_and_normalize_database_urls(self):
+        is_production = (self.ENVIRONMENT.lower() == "production") or (not self.USE_SQLITE_FALLBACK)
+        raw_db_url = (self.DATABASE_URL or "").strip()
+
+        # Production fail-fast guard
+        if is_production:
+            if not raw_db_url or raw_db_url.startswith("sqlite"):
+                raise ValueError(
+                    "CRITICAL: Production deployment requires a valid PostgreSQL DATABASE_URL. "
+                    "Silent fallback to SQLite is strictly forbidden in production."
+                )
+
+        # Normalize async DATABASE_URL (for async SQLAlchemy / asyncpg)
+        normalized_async = raw_db_url
+        if normalized_async.startswith("postgres://"):
+            normalized_async = "postgresql+asyncpg://" + normalized_async[len("postgres://"):]
+        elif normalized_async.startswith("postgresql://") and not normalized_async.startswith("postgresql+asyncpg://"):
+            normalized_async = "postgresql+asyncpg://" + normalized_async[len("postgresql://"):]
+        elif normalized_async.startswith("sqlite://") and not normalized_async.startswith("sqlite+aiosqlite://"):
+            normalized_async = "sqlite+aiosqlite:///" + normalized_async[len("sqlite:///"):].lstrip("/")
+
+        # asyncpg requires 'ssl=' instead of 'sslmode=' in connection query parameters
+        if "postgresql+asyncpg://" in normalized_async:
+            normalized_async = re.sub(r'([?&])sslmode=([a-zA-Z0-9_-]+)', r'\1ssl=\2', normalized_async)
+
+        self.DATABASE_URL = normalized_async
+
+        # Normalize sync DATABASE_SYNC_URL (for Alembic migrations / psycopg2)
+        raw_sync = (self.DATABASE_SYNC_URL or "").strip()
+        # If DATABASE_SYNC_URL is empty or default SQLite while DATABASE_URL is PostgreSQL, derive from DATABASE_URL
+        if not raw_sync or (raw_sync.startswith("sqlite") and not raw_db_url.startswith("sqlite")):
+            raw_sync = raw_db_url
+
+        normalized_sync = raw_sync
+        if normalized_sync.startswith("postgres://"):
+            normalized_sync = "postgresql+psycopg2://" + normalized_sync[len("postgres://"):]
+        elif normalized_sync.startswith("postgresql://") and not normalized_sync.startswith("postgresql+psycopg2://"):
+            normalized_sync = "postgresql+psycopg2://" + normalized_sync[len("postgresql://"):]
+        elif normalized_sync.startswith("postgresql+asyncpg://"):
+            normalized_sync = "postgresql+psycopg2://" + normalized_sync[len("postgresql+asyncpg://"):]
+        elif normalized_sync.startswith("sqlite+aiosqlite:///"):
+            normalized_sync = "sqlite:///" + normalized_sync[len("sqlite+aiosqlite:///"):].lstrip("/")
+
+        if "postgresql+psycopg2://" in normalized_sync:
+            # psycopg2 uses standard libpq 'sslmode='
+            normalized_sync = re.sub(r'([?&])ssl=([a-zA-Z0-9_-]+)', r'\1sslmode=\2', normalized_sync)
+
+        self.DATABASE_SYNC_URL = normalized_sync
+        return self
 
 
 settings = Settings()

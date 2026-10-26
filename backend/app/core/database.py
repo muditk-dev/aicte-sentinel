@@ -18,6 +18,13 @@ engine_kwargs = {
 
 if settings.DATABASE_URL.startswith("sqlite"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    # Production / Neon Serverless PostgreSQL options
+    # Serverless pooling & keep-alive options to gracefully handle autoscaling and idle disconnects
+    engine_kwargs["pool_pre_ping"] = True
+    engine_kwargs["pool_recycle"] = 300
+    engine_kwargs["pool_size"] = 10
+    engine_kwargs["max_overflow"] = 5
 
 engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)
 

@@ -25,16 +25,20 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def get_url():
-    # Use sync URL for migrations
-    if settings.DATABASE_SYNC_URL:
-        url = settings.DATABASE_SYNC_URL
-        if url.startswith("sqlite:///./"):
-            rel_path = url.replace("sqlite:///./", "")
-            root_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", rel_path))
-            return f"sqlite:///{root_db}"
-        return url
-    root_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "sentinel_dev.db"))
-    return f"sqlite:///{root_db}"
+    # Use sync URL for migrations (psycopg2 for PostgreSQL, sqlite3 for SQLite)
+    url = settings.DATABASE_SYNC_URL or settings.DATABASE_URL
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg2://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+psycopg2://"):
+        url = "postgresql+psycopg2://" + url[len("postgresql://"):]
+    elif url.startswith("postgresql+asyncpg://"):
+        url = "postgresql+psycopg2://" + url[len("postgresql+asyncpg://"):]
+
+    if url.startswith("sqlite:///./"):
+        rel_path = url.replace("sqlite:///./", "")
+        root_db = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", rel_path))
+        return f"sqlite:///{root_db}"
+    return url
 
 
 def run_migrations_offline() -> None:
