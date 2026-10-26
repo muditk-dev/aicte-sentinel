@@ -99,7 +99,9 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_and_normalize_database_urls(self):
         is_production = (self.ENVIRONMENT.lower() == "production") or (not self.USE_SQLITE_FALLBACK)
-        raw_db_url = (self.DATABASE_URL or "").strip()
+        raw_db_url = (self.DATABASE_URL or "").strip().strip("'\"").replace("\r", "").replace("\n", "").strip()
+        if raw_db_url.startswith("psql "):
+            raw_db_url = raw_db_url[5:].strip().strip("'\"")
 
         # Production fail-fast guard
         if is_production:
@@ -151,7 +153,10 @@ class Settings(BaseSettings):
         self.DATABASE_URL = normalized_async
 
         # Normalize sync DATABASE_SYNC_URL (for Alembic migrations / psycopg2)
-        raw_sync = (self.DATABASE_SYNC_URL or "").strip()
+        raw_sync = (self.DATABASE_SYNC_URL or "").strip().strip("'\"").replace("\r", "").replace("\n", "").strip()
+        if raw_sync.startswith("psql "):
+            raw_sync = raw_sync[5:].strip().strip("'\"")
+
         # If DATABASE_SYNC_URL is empty or default SQLite while DATABASE_URL is PostgreSQL, derive from DATABASE_URL
         if not raw_sync or (raw_sync.startswith("sqlite") and not raw_db_url.startswith("sqlite")):
             raw_sync = raw_db_url
@@ -167,8 +172,33 @@ class Settings(BaseSettings):
             normalized_sync = "sqlite:///" + normalized_sync[len("sqlite+aiosqlite:///"):].lstrip("/")
 
         if "postgresql+psycopg2://" in normalized_sync:
-            # psycopg2 uses standard libpq 'sslmode='
-            normalized_sync = re.sub(r'([?&])ssl=([a-zA-Z0-9_-]+)', r'\1sslmode=\2', normalized_sync)
+            parsed_sync = urlparse(normalized_sync)
+            sync_query_params = parse_qsl(parsed_sync.query, keep_blank_values=True)
+            clean_sync_params = []
+            has_sslmode = False
+            for k, v in sync_query_params:
+                if k == "sslmode":
+                    clean_sync_params.append(("sslmode", v))
+                    has_sslmode = True
+                elif k == "ssl":
+                    clean_sync_params.append(("sslmode", v))
+                    has_sslmode = True
+                elif k in ("channel_binding", "gssencmode", "target_session_attrs"):
+                    # Strip unsupported/unneeded parameters to prevent driver mismatches
+                    continue
+                else:
+                    clean_sync_params.append((k, v))
+            if not has_sslmode and "neon.tech" in parsed_sync.netloc:
+                clean_sync_params.append(("sslmode", "require"))
+            new_sync_query = urlencode(clean_sync_params)
+            normalized_sync = urlunparse((
+                parsed_sync.scheme,
+                parsed_sync.netloc,
+                parsed_sync.path,
+                parsed_sync.params,
+                new_sync_query,
+                parsed_sync.fragment
+            ))
 
         self.DATABASE_SYNC_URL = normalized_sync
         return self

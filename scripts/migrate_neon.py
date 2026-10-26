@@ -9,10 +9,37 @@ root_dir = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(root_dir / "backend"))
 sys.path.insert(0, str(root_dir))
 
-from sqlalchemy.engine.url import make_url
+from sqlalchemy.engine.url import make_url, URL
 from sqlalchemy import create_engine, text
 from alembic.config import Config
 from alembic import command
+
+
+def sanitize_connection_input(raw: str) -> str:
+    """Sanitizes user input by removing quotes, whitespace, carriage returns, and psql wrapper."""
+    if not raw:
+        return ""
+    cleaned = raw.strip()
+    # Strip psql CLI wrapper if copied from Neon console psql tab
+    if cleaned.startswith("psql "):
+        cleaned = cleaned[5:].strip()
+    # Strip surrounding single or double quotes
+    cleaned = cleaned.strip("'\"").strip()
+    # Remove all carriage returns and newlines
+    cleaned = cleaned.replace("\r", "").replace("\n", "").strip()
+    return cleaned
+
+
+def mask_sensitive_text(text_val: str, password: str = None) -> str:
+    """Masks credentials in error messages or URLs."""
+    if not text_val:
+        return ""
+    masked = text_val
+    if password and len(password) >= 1:
+        masked = masked.replace(password, "****")
+    # Mask user:password in standard connection URLs, even if password has special chars
+    masked = re.sub(r"(://[^:]+:)(.+?)(@[a-zA-Z0-9_\-\.]+(?::\d+)?(?:/|$|\s))", r"\1****\3", masked)
+    return masked
 
 
 def mask_connection_url(raw_url: str) -> str:
@@ -21,8 +48,7 @@ def mask_connection_url(raw_url: str) -> str:
         url = make_url(raw_url)
         return f"{url.drivername}://{url.username}:****@{url.host}:{url.port or 5432}/{url.database}"
     except Exception:
-        # Fallback regex masking
-        return re.sub(r":([^@]+)@", ":****@", raw_url)
+        return mask_sensitive_text(raw_url)
 
 
 def run_neon_migration(database_url: str = None):
@@ -31,24 +57,31 @@ def run_neon_migration(database_url: str = None):
     print("SIH 2026 Problem Statement ID: 26262")
     print("===================================================================")
 
-    raw_url = database_url or os.environ.get("DATABASE_URL")
-    if not raw_url:
+    raw_input = database_url or os.environ.get("DATABASE_URL")
+    if not raw_input:
         print("[!] No DATABASE_URL found in environment.")
         print("    Please paste your Neon connection string below (input will be hidden):")
         try:
-            raw_url = getpass.getpass("    Neon Connection String: ").strip()
+            raw_input = getpass.getpass("    Neon Connection String: ")
         except Exception:
-            raw_url = input("    Neon Connection String: ").strip()
+            raw_input = input("    Neon Connection String: ")
 
-    if not raw_url:
+    cleaned = sanitize_connection_input(raw_input)
+    if not cleaned:
         print("[ERROR] Database URL is empty. Aborting.")
         sys.exit(1)
 
-    # 1. Parse and validate target URL
+    # Detect duplicate connection strings pasted accidentally
+    if cleaned.count("://") > 1:
+        print("[ERROR] Input Malformed: Multiple connection URLs detected.")
+        print("        Please ensure you paste exactly one connection string.")
+        sys.exit(1)
+
+    # 1. Parse ONCE using SQLAlchemy make_url
     try:
-        parsed = make_url(raw_url)
+        parsed = make_url(cleaned)
     except Exception as e:
-        print(f"[ERROR] Invalid database URL format: {e}")
+        print(f"[ERROR] Invalid database URL format: {mask_sensitive_text(str(e))}")
         sys.exit(1)
 
     driver = parsed.drivername.lower()
@@ -75,42 +108,51 @@ def run_neon_migration(database_url: str = None):
     print(f"[*] Target Driver:   {parsed.drivername}")
     print(f"[*] Target Host:     {parsed.host}")
     print(f"[*] Target Database: {parsed.database}")
-    print(f"[*] Safe Target URL: {mask_connection_url(raw_url)}")
+    print(f"[*] Safe Target URL: {mask_connection_url(cleaned)}")
     print("-------------------------------------------------------------------")
 
     # 2. Check local SQLite DB untouched baseline
     sqlite_db_path = root_dir / "sentinel_dev.db"
     initial_sqlite_size = sqlite_db_path.stat().st_size if sqlite_db_path.exists() else None
 
-    # 3. Derive sync migration URL (psycopg2 with sslmode=require)
-    sync_url = raw_url.strip()
-    if sync_url.startswith("postgres://"):
-        sync_url = "postgresql+psycopg2://" + sync_url[len("postgres://"):]
-    elif sync_url.startswith("postgresql://") and not sync_url.startswith("postgresql+psycopg2://"):
-        sync_url = "postgresql+psycopg2://" + sync_url[len("postgresql://"):]
-    elif sync_url.startswith("postgresql+asyncpg://"):
-        sync_url = "postgresql+psycopg2://" + sync_url[len("postgresql+asyncpg://"):]
+    # 3. Construct clean connection URLs using URL.create
+    # psycopg2 sync URL: strictly sslmode=require, NO channel_binding
+    sync_url_obj = URL.create(
+        drivername="postgresql+psycopg2",
+        username=parsed.username,
+        password=parsed.password,
+        host=parsed.host,
+        port=parsed.port or 5432,
+        database=parsed.database,
+        query={"sslmode": "require"},
+    )
 
-    if "postgresql+psycopg2://" in sync_url:
-        sync_url = re.sub(r'([?&])ssl=([a-zA-Z0-9_-]+)', r'\1sslmode=\2', sync_url)
-        if "sslmode=" not in sync_url:
-            separator = "&" if "?" in sync_url else "?"
-            sync_url += f"{separator}sslmode=require"
+    # asyncpg async URL: strictly ssl=require, NO channel_binding
+    async_url_obj = URL.create(
+        drivername="postgresql+asyncpg",
+        username=parsed.username,
+        password=parsed.password,
+        host=parsed.host,
+        port=parsed.port or 5432,
+        database=parsed.database,
+        query={"ssl": "require"},
+    )
 
-    # Set environment for Alembic env.py
-    os.environ["DATABASE_SYNC_URL"] = sync_url
-    os.environ["DATABASE_URL"] = raw_url
+    # Export to environment for Alembic env.py without leaking to logs
+    os.environ["DATABASE_SYNC_URL"] = sync_url_obj.render_as_string(hide_password=False)
+    os.environ["DATABASE_URL"] = async_url_obj.render_as_string(hide_password=False)
 
     # 4. Pre-flight connectivity check
     print("[1/4] Verifying connectivity to Neon PostgreSQL...")
     try:
-        engine = create_engine(sync_url, connect_args={"connect_timeout": 15})
+        engine = create_engine(sync_url_obj, connect_args={"connect_timeout": 15})
         with engine.connect() as conn:
             res = conn.execute(text("SELECT version();")).scalar()
             print(f"      Connection verified! PostgreSQL Server:")
             print(f"      {res[:80]}...")
     except Exception as e:
-        print(f"[ERROR] Failed to connect to Neon PostgreSQL: {e}")
+        safe_msg = mask_sensitive_text(str(e), parsed.password)
+        print(f"[ERROR] Failed to connect to Neon PostgreSQL: {safe_msg}")
         print("        Check network connectivity, host, user, and password.")
         sys.exit(1)
 
@@ -124,32 +166,38 @@ def run_neon_migration(database_url: str = None):
         command.upgrade(alembic_cfg, "head")
         print("      All migrations applied successfully to revision: 006_postgresql_rls")
     except Exception as e:
-        print(f"[ERROR] Migration failed: {e}")
+        safe_msg = mask_sensitive_text(str(e), parsed.password)
+        print(f"[ERROR] Migration failed: {safe_msg}")
         sys.exit(1)
 
     # 6. Post-migration verification of tables and RLS
     print("[3/4] Verifying created tables and Row-Level Security policies...")
-    with engine.connect() as conn:
-        tables_res = conn.execute(text("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public' 
-            ORDER BY table_name;
-        """)).fetchall()
-        table_names = [t[0] for t in tables_res]
-        print(f"      Public tables created ({len(table_names)} total):")
-        print(f"      {', '.join(table_names[:10])}...")
+    try:
+        with engine.connect() as conn:
+            tables_res = conn.execute(text("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                ORDER BY table_name;
+            """)).fetchall()
+            table_names = [t[0] for t in tables_res]
+            print(f"      Public tables created ({len(table_names)} total):")
+            print(f"      {', '.join(table_names[:10])}...")
 
-        # Check RLS policies
-        policies_res = conn.execute(text("""
-            SELECT tablename, policyname, cmd 
-            FROM pg_policies 
-            WHERE schemaname = 'public' 
-            ORDER BY tablename;
-        """)).fetchall()
-        print(f"      Active RLS policies ({len(policies_res)} total):")
-        for p in policies_res:
-            print(f"      - {p[0]}: {p[1]} ({p[2]})")
+            # Check RLS policies
+            policies_res = conn.execute(text("""
+                SELECT tablename, policyname, cmd 
+                FROM pg_policies 
+                WHERE schemaname = 'public' 
+                ORDER BY tablename;
+            """)).fetchall()
+            print(f"      Active RLS policies ({len(policies_res)} total):")
+            for p in policies_res:
+                print(f"      - {p[0]}: {p[1]} ({p[2]})")
+    except Exception as e:
+        safe_msg = mask_sensitive_text(str(e), parsed.password)
+        print(f"[ERROR] Verification queries failed: {safe_msg}")
+        sys.exit(1)
 
     # 7. Check local SQLite DB untouched
     print("[4/4] Verifying local development database preservation...")
