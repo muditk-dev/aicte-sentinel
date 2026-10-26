@@ -1165,6 +1165,9 @@ async def seed():
                 )
                 db.add_all([f1, f2])
 
+        # Ensure Phase 5 Post-Approval Obligations & Monitoring are seeded
+        await seed_phase5_data(db)
+
         await db.commit()
         print("Deterministic synthetic seed data generated successfully!")
 
