@@ -123,49 +123,51 @@ export const LoginPage: React.FC = () => {
             </div>
           </form>
 
-          {/* Quick Demo Role Picker */}
-          <div className="mt-6 border-t border-slate-200 pt-5">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Select Demo Statutory Identity:
-            </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => fillDemoCredentials('superadmin@aicte-india.org', 'Sentinel@Admin2026!')}
-                className="p-2 border border-slate-200 rounded text-left hover:bg-blue-50 hover:border-blue-300 transition-colors"
-              >
-                <div className="font-bold text-slate-900">Central Admin</div>
-                <div className="text-[10px] text-slate-500">Super Administrator</div>
-              </button>
+          {/* Quick Demo Role Picker (Active in dev or when explicitly enabled) */}
+          {(import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_LOGIN === 'true') && (
+            <div className="mt-6 border-t border-slate-200 pt-5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                Select Demo Statutory Identity:
+              </p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => fillDemoCredentials('superadmin@aicte-india.org', 'Sentinel@Admin2026!')}
+                  className="p-2 border border-slate-200 rounded text-left hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                >
+                  <div className="font-bold text-slate-900">Central Admin</div>
+                  <div className="text-[10px] text-slate-500">Super Administrator</div>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => fillDemoCredentials('ro.delhi@aicte-india.org', 'Regional@2026!')}
-                className="p-2 border border-slate-200 rounded text-left hover:bg-blue-50 hover:border-blue-300 transition-colors"
-              >
-                <div className="font-bold text-slate-900">Regional Officer</div>
-                <div className="text-[10px] text-slate-500">Northern Region</div>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => fillDemoCredentials('ro.delhi@aicte-india.org', 'Regional@2026!')}
+                  className="p-2 border border-slate-200 rounded text-left hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                >
+                  <div className="font-bold text-slate-900">Regional Officer</div>
+                  <div className="text-[10px] text-slate-500">Northern Region</div>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => fillDemoCredentials('scrutiny.lead@aicte-india.org', 'Scrutiny@2026!')}
-                className="p-2 border border-slate-200 rounded text-left hover:bg-blue-50 hover:border-blue-300 transition-colors"
-              >
-                <div className="font-bold text-slate-900">Scrutiny Desk</div>
-                <div className="text-[10px] text-slate-500">Scrutiny Officer</div>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => fillDemoCredentials('scrutiny.lead@aicte-india.org', 'Scrutiny@2026!')}
+                  className="p-2 border border-slate-200 rounded text-left hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                >
+                  <div className="font-bold text-slate-900">Scrutiny Desk</div>
+                  <div className="text-[10px] text-slate-500">Scrutiny Officer</div>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => fillDemoCredentials('director@ditm-delhi.edu.in', 'College@2026!')}
-                className="p-2 border border-slate-200 rounded text-left hover:bg-blue-50 hover:border-blue-300 transition-colors"
-              >
-                <div className="font-bold text-slate-900">College Signatory</div>
-                <div className="text-[10px] text-slate-500">DITM (Institution)</div>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => fillDemoCredentials('director@ditm-delhi.edu.in', 'College@2026!')}
+                  className="p-2 border border-slate-200 rounded text-left hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                >
+                  <div className="font-bold text-slate-900">College Signatory</div>
+                  <div className="text-[10px] text-slate-500">DITM (Institution)</div>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="mt-4 text-center text-[11px] text-slate-500">
