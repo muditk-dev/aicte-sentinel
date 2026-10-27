@@ -32,3 +32,28 @@ class TokenResponse(BaseModel):
     token_type: str = "Bearer"
     expires_in_minutes: int
     user: UserProfile
+
+
+class BootstrapStatusResponse(BaseModel):
+    bootstrap_available: bool
+    total_users: int
+    message: str
+
+
+class BootstrapRequest(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+    designation: Optional[str] = "Member Secretary / Central Council"
+    assigned_region: Optional[str] = None
+
+
+class ProvisionUserRequest(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+    role_code: str
+    designation: Optional[str] = None
+    institution_id: Optional[str] = None
+    assigned_region: Optional[str] = None
+
