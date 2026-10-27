@@ -65,6 +65,10 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL
 - **Local Development:** When `VITE_API_BASE_URL` is unset, requests default to `/api/v1`, transparently proxied by Vite dev server to `http://127.0.0.1:8000`.
 - **Vercel Production:** Setting `VITE_API_BASE_URL=https://aicte-sentinel-backend.onrender.com` dynamically dispatches API calls directly to the live backend with CORS headers.
 
+### 2.4 Build-Time Variable Inlining & Production Redeployment
+- **Vite Build Inlining:** In a Vite SPA, environment variables prefixed with `VITE_` are statically evaluated and inlined into the client-side JavaScript bundle during the build phase (`npm run build`) via `import.meta.env.VITE_API_BASE_URL`.
+- **Production Redeployment Trigger:** When `VITE_API_BASE_URL` is configured in Vercel Project Settings (`https://aicte-sentinel-backend.onrender.com`), prebuilt deployments cannot read the new value at runtime. A new commit pushed to `origin/master` triggers a clean production build on Vercel, ensuring the live backend URL is compiled into the static distribution assets (`dist/assets/*.js`).
+
 ---
 
 ## 3. Environment Variable Configuration Matrix
